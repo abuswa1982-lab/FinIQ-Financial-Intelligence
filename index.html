@@ -273,16 +273,16 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 
 </div><!-- /app -->
 <script>
-// ═══ BENCHMARKS ═══════════════════════════════════════════════
+// //  BENCHMARKS
 var B={ecommerce:{name:"E-commerce / Online Retail",grossMargin:{g:42,o:30,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.8,o:1.2,li:false},quickRatio:{g:1.0,o:0.7,li:false},debtEquity:{g:0.4,o:0.9,li:true},debtAsset:{g:0.3,o:0.5,li:true},roe:{g:18,o:10,li:false},roa:{g:8,o:4,li:false},roi:{g:10,o:5,li:false},dso:{g:18,o:30,li:true},inventoryTurnover:{g:8,o:5,li:false},totalAssetTurnover:{g:1.6,o:1.0,li:false},salesPerEmployee:{g:250000,o:120000,li:false},contributionMargin:{g:42,o:30,li:false},breakevenPct:{g:45,o:65,li:true}},retail:{name:"Brick & Mortar Retail",grossMargin:{g:35,o:25,li:false},netMargin:{g:4,o:2,li:false},opMargin:{g:6,o:3,li:false},ebitdaMargin:{g:9,o:5,li:false},currentRatio:{g:1.6,o:1.2,li:false},quickRatio:{g:0.6,o:0.4,li:false},debtEquity:{g:0.6,o:1.2,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:14,o:7,li:false},roa:{g:6,o:3,li:false},roi:{g:8,o:4,li:false},dso:{g:8,o:18,li:true},inventoryTurnover:{g:10,o:6,li:false},totalAssetTurnover:{g:1.9,o:1.3,li:false},salesPerEmployee:{g:180000,o:90000,li:false},contributionMargin:{g:35,o:22,li:false},breakevenPct:{g:50,o:70,li:true}},saas:{name:"SaaS / Software",grossMargin:{g:75,o:60,li:false},netMargin:{g:18,o:6,li:false},opMargin:{g:20,o:8,li:false},ebitdaMargin:{g:22,o:12,li:false},currentRatio:{g:2.2,o:1.5,li:false},quickRatio:{g:1.8,o:1.2,li:false},debtEquity:{g:0.2,o:0.6,li:true},debtAsset:{g:0.2,o:0.4,li:true},roe:{g:22,o:12,li:false},roa:{g:12,o:6,li:false},roi:{g:15,o:8,li:false},dso:{g:28,o:45,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:0.9,o:0.5,li:false},salesPerEmployee:{g:350000,o:180000,li:false},contributionMargin:{g:75,o:60,li:false},breakevenPct:{g:30,o:55,li:true}},manufacturing:{name:"Manufacturing",grossMargin:{g:32,o:22,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.9,o:1.4,li:false},quickRatio:{g:0.9,o:0.6,li:false},debtEquity:{g:0.7,o:1.4,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:15,o:8,li:false},roa:{g:7,o:4,li:false},roi:{g:9,o:5,li:false},dso:{g:32,o:50,li:true},inventoryTurnover:{g:7,o:4,li:false},totalAssetTurnover:{g:0.9,o:0.6,li:false},salesPerEmployee:{g:220000,o:110000,li:false},contributionMargin:{g:32,o:20,li:false},breakevenPct:{g:50,o:70,li:true}},wholesale:{name:"Wholesale / Distribution",grossMargin:{g:22,o:14,li:false},netMargin:{g:4,o:2,li:false},opMargin:{g:5,o:2.5,li:false},ebitdaMargin:{g:7,o:4,li:false},currentRatio:{g:1.7,o:1.3,li:false},quickRatio:{g:0.8,o:0.5,li:false},debtEquity:{g:0.6,o:1.1,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:13,o:7,li:false},roa:{g:5,o:3,li:false},roi:{g:7,o:4,li:false},dso:{g:28,o:42,li:true},inventoryTurnover:{g:9,o:5,li:false},totalAssetTurnover:{g:1.6,o:1.1,li:false},salesPerEmployee:{g:600000,o:300000,li:false},contributionMargin:{g:22,o:14,li:false},breakevenPct:{g:55,o:75,li:true}},services:{name:"Professional Services",grossMargin:{g:65,o:48,li:false},netMargin:{g:18,o:9,li:false},opMargin:{g:22,o:12,li:false},ebitdaMargin:{g:25,o:14,li:false},currentRatio:{g:2.0,o:1.4,li:false},quickRatio:{g:1.6,o:1.1,li:false},debtEquity:{g:0.3,o:0.7,li:true},debtAsset:{g:0.2,o:0.4,li:true},roe:{g:22,o:13,li:false},roa:{g:13,o:7,li:false},roi:{g:16,o:9,li:false},dso:{g:28,o:45,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:1.1,o:0.7,li:false},salesPerEmployee:{g:180000,o:90000,li:false},contributionMargin:{g:65,o:48,li:false},breakevenPct:{g:30,o:50,li:true}},restaurant:{name:"Restaurant / Hospitality",grossMargin:{g:68,o:58,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.3,o:0.9,li:false},quickRatio:{g:0.6,o:0.3,li:false},debtEquity:{g:0.9,o:1.8,li:true},debtAsset:{g:0.5,o:0.7,li:true},roe:{g:18,o:9,li:false},roa:{g:9,o:4,li:false},roi:{g:11,o:6,li:false},dso:{g:4,o:12,li:true},inventoryTurnover:{g:22,o:14,li:false},totalAssetTurnover:{g:1.3,o:0.9,li:false},salesPerEmployee:{g:65000,o:40000,li:false},contributionMargin:{g:68,o:55,li:false},breakevenPct:{g:55,o:72,li:true}},realestate:{name:"Real Estate",grossMargin:{g:45,o:28,li:false},netMargin:{g:18,o:9,li:false},opMargin:{g:22,o:12,li:false},ebitdaMargin:{g:28,o:16,li:false},currentRatio:{g:1.6,o:1.1,li:false},quickRatio:{g:0.9,o:0.6,li:false},debtEquity:{g:1.8,o:3.5,li:true},debtAsset:{g:0.55,o:0.72,li:true},roe:{g:11,o:6,li:false},roa:{g:4,o:2,li:false},roi:{g:8,o:4,li:false},dso:{g:12,o:25,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:0.3,o:0.2,li:false},salesPerEmployee:{g:500000,o:250000,li:false},contributionMargin:{g:45,o:28,li:false},breakevenPct:{g:40,o:60,li:true}},healthcare:{name:"Healthcare / Medical",grossMargin:{g:45,o:32,li:false},netMargin:{g:10,o:5,li:false},opMargin:{g:13,o:7,li:false},ebitdaMargin:{g:16,o:9,li:false},currentRatio:{g:2.0,o:1.4,li:false},quickRatio:{g:1.4,o:0.9,li:false},debtEquity:{g:0.5,o:1.0,li:true},debtAsset:{g:0.35,o:0.55,li:true},roe:{g:16,o:9,li:false},roa:{g:8,o:4,li:false},roi:{g:10,o:6,li:false},dso:{g:35,o:55,li:true},inventoryTurnover:{g:10,o:6,li:false},totalAssetTurnover:{g:0.8,o:0.5,li:false},salesPerEmployee:{g:200000,o:110000,li:false},contributionMargin:{g:45,o:30,li:false},breakevenPct:{g:45,o:65,li:true}},construction:{name:"Construction",grossMargin:{g:22,o:14,li:false},netMargin:{g:6,o:3,li:false},opMargin:{g:8,o:4,li:false},ebitdaMargin:{g:10,o:6,li:false},currentRatio:{g:1.6,o:1.2,li:false},quickRatio:{g:1.0,o:0.7,li:false},debtEquity:{g:0.8,o:1.6,li:true},debtAsset:{g:0.45,o:0.65,li:true},roe:{g:14,o:8,li:false},roa:{g:6,o:3,li:false},roi:{g:8,o:4,li:false},dso:{g:35,o:55,li:true},inventoryTurnover:{g:8,o:5,li:false},totalAssetTurnover:{g:1.1,o:0.7,li:false},salesPerEmployee:{g:280000,o:140000,li:false},contributionMargin:{g:22,o:14,li:false},breakevenPct:{g:50,o:70,li:true}}};
 
-// ═══ STATE ════════════════════════════════════════════════════
+// //  STATE
 var IND="ecommerce",LAST=null,LINS=null,LRECS=null,LPER="",LCO="";
 var FD={pl:null,bs:null,cf:null},RTYPE="monthly";
 var HIST=[];
 try{HIST=JSON.parse(localStorage.getItem("finiq_h")||"[]");}catch(e){}
 
-// ═══ FILE HANDLING ════════════════════════════════════════════
+// //  FILE HANDLING
 function handleFile(inp,type){
   var file=inp.files[0];
   if(!file)return;
@@ -301,8 +301,7 @@ function handleFile(inp,type){
         var wb=XLSX.read(e.target.result,{type:"binary"});
         var ws=wb.Sheets[wb.SheetNames[0]];
         var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
-        text=rows.map(function(r){return r.join("	");}).join("
-");
+        text=rows.map(function(r){return r.join("\t");}).join("\n");
       }
       FD[type]=text;
       card.classList.add("done");
@@ -310,7 +309,7 @@ function handleFile(inp,type){
       fnEl.textContent=file.name;
     }catch(err){
       card.classList.add("errc");
-      stEl.textContent="Error reading file — try again";
+      stEl.textContent="Error reading file - try again";
       FD[type]=null;
     }
   };
@@ -326,7 +325,7 @@ function handleFile(inp,type){
   }
 }
 
-// ═══ PERIOD ═══════════════════════════════════════════════════
+// //  PERIOD
 function setR(t,el){
   RTYPE=t;
   document.querySelectorAll(".rtab").forEach(function(x){x.classList.remove("on");});
@@ -345,7 +344,7 @@ function getPer(){
   return(s2||"?")+" to "+(e2||"?");
 }
 
-// ═══ QB PARSER ════════════════════════════════════════════════
+// //  QB PARSER
 function parseQB(text){
   var map={};
   if(!text)return map;
@@ -388,7 +387,7 @@ function gv(map,keys){
   return null;
 }
 
-// ═══ KPI CALCULATION ══════════════════════════════════════════
+// //  KPI CALCULATION
 function calcKPIs(plT,bsT,cfT,emp){
   var pl=parseQB(plT||""),bs=parseQB(bsT||""),cf=parseQB(cfT||"");
   var d={};
@@ -442,12 +441,12 @@ function calcKPIs(plT,bsT,cfT,emp){
   return r;
 }
 
-// ═══ HELPERS ══════════════════════════════════════════════════
+// //  HELPERS
 function gs(val,bk){if(val==null||isNaN(val))return"na";if(!bk||bk.g==null)return"na";if(bk.li){if(val<=bk.g)return"good";if(val<=bk.o)return"warn";return"bad";}if(val>=bk.g)return"good";if(val>=bk.o)return"warn";return"bad";}
 function sl(s){return{good:"Above target",warn:"Below target",bad:"Needs attention",na:"N/A"}[s]||"N/A";}
 function fmt(v,t){if(v==null||isNaN(v))return"N/A";if(t==="pct")return v.toFixed(1)+"%";if(t==="ratio")return v.toFixed(2)+"x";if(t==="turns")return v.toFixed(1)+"x/yr";if(t==="days")return Math.round(v)+" days";if(t==="usd")return"$"+Math.round(v).toLocaleString();return String(v);}
 
-// ═══ RENDER KPIs ══════════════════════════════════════════════
+// //  RENDER KPIs
 function renderKPIs(r){
   var b=B[IND];
   var checks=[{v:r.grossMargin,bk:b.grossMargin},{v:r.netMargin,bk:b.netMargin},{v:r.currentRatio,bk:b.currentRatio},{v:r.quickRatio,bk:b.quickRatio},{v:r.debtEquity,bk:b.debtEquity},{v:r.roe,bk:b.roe},{v:r.dso,bk:b.dso},{v:r.inventoryTurnover,bk:b.inventoryTurnover}];
@@ -475,13 +474,13 @@ function renderKPIs(r){
     });
     html+='</div></div>';
   });
-  if(r.negativeEquity)html='<div style="padding:12px 16px;background:var(--dbg);border-radius:var(--r);margin-bottom:16px;font-size:12px;color:var(--danger);font-weight:600">&#9888; Negative equity detected — total liabilities exceed total assets. See Recommendations tab for action steps.</div>'+html;
+  if(r.negativeEquity)html='<div style="padding:12px 16px;background:var(--dbg);border-radius:var(--r);margin-bottom:16px;font-size:12px;color:var(--danger);font-weight:600">&#9888; Negative equity detected - total liabilities exceed total assets. See Recommendations tab for action steps.</div>'+html;
   document.getElementById("kpisections").innerHTML=html;
   document.getElementById("kpi-content").style.display="block";
   document.getElementById("kpi-empty").style.display="none";
 }
 
-// ═══ RENDER ANALYSIS ═══════════════════════════════════════════
+// //  RENDER ANALYSIS
 function renderAnalysis(ins){
   var bm={good:"good",warn:"warn",risk:"risk",info:"info"},lm={good:"Strength",warn:"Watch",risk:"Risk Flag",info:"Insight"};
   document.getElementById("aiblocks").innerHTML=ins.map(function(i){return'<div class="acard"><div class="ahead"><span class="abadge '+(bm[i.type]||"info")+'">'+(lm[i.type]||"Note")+'</span><span class="atitle">'+i.title+'</span></div><div class="abody">'+i.body+'</div>'+(i.action?'<div class="aaction"><strong>Action step</strong>'+i.action+'</div>':'')+' </div>';}).join("");
@@ -490,7 +489,7 @@ function renderAnalysis(ins){
   document.getElementById("aisub").textContent=LPER+" -- "+LCO;
 }
 
-// ═══ RENDER BENCHMARK ══════════════════════════════════════════
+// //  RENDER BENCHMARK
 function renderBM(r){
   var b=B[IND];
   document.getElementById("bmsub").textContent=LCO+" -- "+LPER+" vs "+b.name;
@@ -500,7 +499,7 @@ function renderBM(r){
   document.getElementById("bm-empty").style.display="none";
 }
 
-// ═══ RECOMMENDATIONS ENGINE ════════════════════════════════════
+// //  RECOMMENDATIONS ENGINE
 function generateRecs(r){
   var b=B[IND],ind=B[IND].name,recs=[];
   function addR(pri,kpi,title,cur,tgt,body,steps,impact){recs.push({priority:pri,kpi:kpi,title:title,current:cur,target:tgt,body:body,steps:steps,impact:impact});}
@@ -603,7 +602,7 @@ function loadRecHist(i){
   sw("recommendations");
 }
 
-// ═══ EXPORT RECS ════════════════════════════════════════════════
+// //  EXPORT RECS
 function exportRecs(){
   if(!LRECS||!LRECS.length){alert("No recommendations to export yet.");return;}
   var wb=XLSX.utils.book_new();
@@ -621,7 +620,7 @@ function exportRecs(){
   XLSX.writeFile(wb,"FinIQ_Recommendations_"+LPER+"_"+new Date().toISOString().slice(0,10)+".xlsx");
 }
 
-// ═══ ANALYSIS ENGINE ═══════════════════════════════════════════
+// //  ANALYSIS ENGINE
 function genInsights(r){
   var b=B[IND],ind=B[IND].name,ins=[];
   function addI(tp,ti,bo,ac){ins.push({type:tp,title:ti,body:bo,action:ac});}
@@ -637,7 +636,7 @@ function genInsights(r){
   return ins;
 }
 
-// ═══ HISTORY ════════════════════════════════════════════════════
+// //  HISTORY
 function kpiRows(r,ind){var b=B[ind];return[["Gross Margin (%)",r.grossMargin!=null?+r.grossMargin.toFixed(1):null,b.grossMargin.g,b.grossMargin.o,gs(r.grossMargin,b.grossMargin)],["Net Profit Margin (%)",r.netMargin!=null?+r.netMargin.toFixed(1):null,b.netMargin.g,b.netMargin.o,gs(r.netMargin,b.netMargin)],["Operating Margin (%)",r.opMargin!=null?+r.opMargin.toFixed(1):null,b.opMargin.g,b.opMargin.o,gs(r.opMargin,b.opMargin)],["EBITDA Margin (%)",r.ebitdaMargin!=null?+r.ebitdaMargin.toFixed(1):null,b.ebitdaMargin.g,b.ebitdaMargin.o,gs(r.ebitdaMargin,b.ebitdaMargin)],["ROE (%)",r.roe!=null?+r.roe.toFixed(1):null,b.roe.g,b.roe.o,gs(r.roe,b.roe)],["ROA (%)",r.roa!=null?+r.roa.toFixed(1):null,b.roa.g,b.roa.o,gs(r.roa,b.roa)],["ROI (%)",r.roi!=null?+r.roi.toFixed(1):null,b.roi.g,b.roi.o,gs(r.roi,b.roi)],["Contribution Margin (%)",r.contributionMargin!=null?+r.contributionMargin.toFixed(1):null,b.contributionMargin.g,b.contributionMargin.o,gs(r.contributionMargin,b.contributionMargin)],["Current Ratio",r.currentRatio!=null?+r.currentRatio.toFixed(2):null,b.currentRatio.g,b.currentRatio.o,gs(r.currentRatio,b.currentRatio)],["Quick Ratio",r.quickRatio!=null?+r.quickRatio.toFixed(2):null,b.quickRatio.g,b.quickRatio.o,gs(r.quickRatio,b.quickRatio)],["Working Capital ($)",r.workingCapital!=null?Math.round(r.workingCapital):null,null,null,r.workingCapital!=null?r.workingCapital>=0?"good":"bad":"na"],["Operating Cash Flow ($)",r.ocfVal!=null?Math.round(r.ocfVal):null,null,null,r.ocfVal!=null?r.ocfVal>=0?"good":"bad":"na"],["Free Cash Flow ($)",r.freeCashFlow!=null?Math.round(r.freeCashFlow):null,null,null,r.freeCashFlow!=null?r.freeCashFlow>=0?"good":"bad":"na"],["Days Sales Outstanding",r.dso!=null?Math.round(r.dso):null,b.dso.g,b.dso.o,gs(r.dso,b.dso)],["Inventory Turnover (x/yr)",r.inventoryTurnover!=null?+r.inventoryTurnover.toFixed(1):null,b.inventoryTurnover.g,b.inventoryTurnover.o,gs(r.inventoryTurnover,b.inventoryTurnover)],["Total Asset Turnover",r.totalAssetTurnover!=null?+r.totalAssetTurnover.toFixed(2):null,b.totalAssetTurnover.g,b.totalAssetTurnover.o,gs(r.totalAssetTurnover,b.totalAssetTurnover)],["Sales per Employee ($)",r.salesPerEmployee!=null?Math.round(r.salesPerEmployee):null,b.salesPerEmployee.g,b.salesPerEmployee.o,gs(r.salesPerEmployee,b.salesPerEmployee)],["Debt to Equity",r.debtEquity!=null?+r.debtEquity.toFixed(2):null,b.debtEquity.g,b.debtEquity.o,gs(r.debtEquity,b.debtEquity)],["Debt to Assets",r.debtAsset!=null?+r.debtAsset.toFixed(2):null,b.debtAsset.g,b.debtAsset.o,gs(r.debtAsset,b.debtAsset)],["Break-even Sales ($)",r.breakevenSales!=null?Math.round(r.breakevenSales):null,null,null,"na"],["Break-even % of Revenue",r.breakevenPct!=null?+r.breakevenPct.toFixed(1):null,b.breakevenPct.g,b.breakevenPct.o,gs(r.breakevenPct,b.breakevenPct)]];}
 
 function saveHist(r,ins,recs,per,co){
@@ -683,7 +682,7 @@ function loadRec(i){
 function delRec(i){if(!confirm("Delete this record?"))return;HIST.splice(i,1);try{localStorage.setItem("finiq_h",JSON.stringify(HIST));}catch(e){}renderHist();}
 function clearHist(){if(!confirm("Clear all history? Cannot be undone."))return;HIST=[];try{localStorage.setItem("finiq_h","[]");}catch(e){}renderHist();}
 
-// ═══ EXPORTS ════════════════════════════════════════════════════
+// //  EXPORTS
 function exportSingle(){
   if(!LAST)return;var wb=XLSX.utils.book_new();
   var d=[["KPI","Your Result","Industry Target","Industry Minimum","Status"]];
@@ -724,7 +723,7 @@ function exportHistory(){
   XLSX.writeFile(wb,"FinIQ_Full_History_"+new Date().toISOString().slice(0,10)+".xlsx");
 }
 
-// ═══ MAIN RUN ════════════════════════════════════════════════════
+// //  MAIN RUN
 function runAnalysis(){
   var pl=FD.pl,bs=FD.bs;
   if(!pl&&!bs){document.getElementById("imperr").innerHTML='<div class="errmsg">Please upload at least your P&L Statement and Balance Sheet files before running.</div>';return;}
@@ -756,7 +755,7 @@ function runAnalysis(){
   },100);
 }
 
-// ═══ NAV & UTILS ═════════════════════════════════════════════════
+// //  NAV  UTILS
 function sw(n){
   var ns=["import","kpis","analysis","benchmark","recommendations","history"];
   ns.forEach(function(x,i){document.querySelectorAll(".ntab")[i].classList.remove("on");document.getElementById("p-"+x).classList.remove("on");});
