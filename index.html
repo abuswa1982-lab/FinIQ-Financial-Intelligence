@@ -5,11 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FinIQ - Financial Intelligence Platform</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// Load jsPDF dynamically and cache the constructor
+var _jsPDFReady=false;
+var _jsPDFCtor=null;
+function ensureJsPDF(cb){
+  if(_jsPDFCtor){cb(_jsPDFCtor);return;}
+  var s=document.createElement("script");
+  s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+  s.onload=function(){
+    _jsPDFCtor=window.jspdf&&window.jspdf.jsPDF
+      ?window.jspdf.jsPDF
+      :(window.jsPDF||null);
+    if(!_jsPDFCtor){alert("Could not load PDF library. Check your internet connection.");return;}
+    cb(_jsPDFCtor);
+  };
+  s.onerror=function(){alert("Could not load PDF library. Check your internet connection.");};
+  document.head.appendChild(s);
+}
+function pdfSave(doc,filename){
+  // Use blob + anchor download — works on GitHub Pages and all modern browsers
+  try{
+    var blob=doc.output("blob");
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    a.href=url;a.download=filename;a.style.display="none";
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  }catch(e){
+    // Final fallback — open in new tab
+    var duri=doc.output("datauristring");
+    var w=window.open();
+    if(w)w.document.write('<iframe src="'+duri+'" width="100%" height="100%" style="border:none"></iframe>');
+  }
+}
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--ink:#0f1117;--ink2:#3d4047;--ink3:#7a7d85;--bg:#f2f2f0;--bg2:#fff;--bg3:#e8e8e6;--accent:#1a5cff;--success:#0a7c4a;--sbg:#e6f4ed;--warn:#b45309;--wbg:#fef3e2;--danger:#c0392b;--dbg:#fdecea;--info:#1a56db;--ibg:#e8f0fe;--border:#dddcda;--r:10px;--rl:14px}
 body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;min-height:100vh}
-.app{max-width:1100px;margin:0 auto;padding:16px}
+.app{max-width:1200px;margin:0 auto;padding:16px}
 .hdr{background:var(--ink);color:#fff;padding:16px 22px;border-radius:var(--rl) var(--rl) 0 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
 .logo{font-size:18px;font-weight:700;letter-spacing:-.5px}.logo em{color:#5b8dff;font-style:normal}
 .hdr-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -20,6 +55,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .ntab{padding:12px 14px;font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;transition:all .15s}
 .ntab.on{color:var(--accent);border-bottom-color:var(--accent)}
 .ntab:hover:not(.on){color:var(--ink2)}
+/* Comparison tab gets a distinct accent */
+.ntab.cmp-tab{color:#7c3aed}
+.ntab.cmp-tab.on{color:#7c3aed;border-bottom-color:#7c3aed}
 .panel{display:none;padding:22px;background:var(--bg2);min-height:400px}.panel.on{display:block}
 .lbl{font-size:11px;font-weight:600;color:var(--ink3);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
 input,select{font-size:13px;font-family:inherit;border:1px solid var(--border);border-radius:8px;padding:9px 11px;background:var(--bg2);color:var(--ink);width:100%;transition:border-color .15s}
@@ -111,6 +149,67 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .rhist-item{padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;cursor:pointer;transition:background .15s}
 .rhist-item:hover{background:var(--bg)}
 .rhist-period{font-size:12px;font-weight:600}.rhist-meta{font-size:11px;color:var(--ink3);margin-top:2px}
+
+/* ── COMPARISON TAB STYLES ── */
+.cmp-split{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:700px){.cmp-split{grid-template-columns:1fr}}
+.cmp-col{border:1px solid var(--border);border-radius:var(--rl);padding:16px;background:var(--bg2)}
+.cmp-col-hdr{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding:8px 12px;border-radius:8px}
+.cmp-col-hdr.period-a{background:#e8f0fe;color:#1a56db}
+.cmp-col-hdr.period-b{background:#fef3e2;color:#b45309}
+.cmp-ugrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+/* Side-by-side KPI comparison table */
+.cmp-table{width:100%;border-collapse:collapse;font-size:12px}
+.cmp-table th{padding:8px 10px;background:var(--bg);color:var(--ink3);font-size:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;border-bottom:1px solid var(--border);text-align:left}
+.cmp-table th.r{text-align:right}
+.cmp-table td{padding:9px 10px;border-bottom:.5px solid var(--border);vertical-align:middle}
+.cmp-table td.r{text-align:right;font-variant-numeric:tabular-nums}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table tr:hover td{background:var(--bg)}
+.cmp-kpi-name{font-size:12px;font-weight:500;color:var(--ink2)}
+.cmp-val-a{font-weight:700;color:#1a56db}
+.cmp-val-b{font-weight:700;color:#b45309}
+.cmp-delta{font-weight:700;white-space:nowrap}
+.cmp-delta.up{color:var(--success)}.cmp-delta.dn{color:var(--danger)}.cmp-delta.flat{color:var(--ink3)}
+/* Score comparison */
+.cmp-scores{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:600px){.cmp-scores{grid-template-columns:1fr}}
+.cmp-score-card{border-radius:var(--rl);padding:16px 20px;display:flex;align-items:center;gap:16px}
+.cmp-score-card.a{background:#e8f0fe;border:1px solid #93b4fb}
+.cmp-score-card.b{background:#fef3e2;border:1px solid #f9c96a}
+.cmp-score-num{font-size:40px;font-weight:800;letter-spacing:-2px}
+.cmp-score-info .period-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.cmp-score-info .score-lbl{font-size:15px;font-weight:700}
+.cmp-score-info .score-sub{font-size:11px;color:var(--ink3);margin-top:3px}
+/* Delta badge */
+.delta-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700}
+.delta-badge.improved{background:var(--sbg);color:var(--success)}
+.delta-badge.declined{background:var(--dbg);color:var(--danger)}
+.delta-badge.flat{background:var(--bg3);color:var(--ink3)}
+/* Section divider in comparison */
+.cmp-section-title{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin:20px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+/* Improvement / decline summary pills */
+.cmp-summary-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.cmp-pill{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600}
+.cmp-pill.improved{background:var(--sbg);color:var(--success)}
+.cmp-pill.declined{background:var(--dbg);color:var(--danger)}
+.cmp-pill.flat{background:var(--bg3);color:var(--ink3)}
+/* Comparison recommendations */
+.crec-card{border-radius:var(--rl);padding:14px 16px;margin-bottom:10px;border:1px solid var(--border)}
+.crec-card.improved{background:var(--sbg);border-left:4px solid var(--success)}
+.crec-card.declined{background:#fff5f5;border-left:4px solid var(--danger)}
+.crec-card.new-issue{background:#fffbf0;border-left:4px solid var(--warn)}
+.crec-card.resolved{background:#f0f4ff;border-left:4px solid var(--info)}
+.crec-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.crec-title{font-size:13px;font-weight:700}
+.crec-badge{font-size:10px;padding:3px 10px;border-radius:20px;font-weight:700}
+.crec-badge.improved{background:var(--sbg);color:var(--success)}
+.crec-badge.declined{background:var(--dbg);color:var(--danger)}
+.crec-badge.new-issue{background:var(--wbg);color:var(--warn)}
+.crec-badge.resolved{background:var(--ibg);color:var(--info)}
+.crec-body{font-size:12px;color:var(--ink2);line-height:1.75;margin-bottom:8px}
+.crec-steps{background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.7;border-left:2px solid var(--accent)}
+.crec-steps strong{display:block;color:var(--ink);font-size:11px;margin-bottom:4px}
 </style>
 </head>
 <body>
@@ -139,6 +238,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <button class="ntab" onclick="sw('analysis')">Analysis</button>
   <button class="ntab" onclick="sw('benchmark')">Benchmarks</button>
   <button class="ntab" onclick="sw('recommendations')">Recommendations</button>
+  <button class="ntab cmp-tab" onclick="sw('compare')">⇄ Compare Periods</button>
   <button class="ntab" onclick="sw('history')">History</button>
 </div>
 
@@ -203,6 +303,15 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   </div>
   <button class="btnrun" id="runbtn" onclick="runAnalysis()">Calculate All KPIs &amp; Generate Analysis</button>
   <div id="imperr"></div>
+  <div id="parse-debug" style="display:none;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="stitle" style="margin:0;border:none;padding:0;font-size:11px">What the parser extracted from your files</div>
+      <button class="btnsm" onclick="document.getElementById('parse-debug').style.display='none'">Hide</button>
+    </div>
+    <div class="tip" style="margin-bottom:10px">If <strong>Operating Cash Flow</strong> or <strong>Free Cash Flow</strong> looks wrong, check the Cash Flow row below. <em>null</em> means the label in your QB export didn't match any known variant.</div>
+    <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Field</th><th>Value found</th><th>From file</th></tr></thead><tbody id="debug-tbody"></tbody></table></div>
+    <div id="debug-cf-warn" style="display:none;margin-top:8px" class="errmsg"></div>
+  </div>
 </div>
 
 <!-- KPI DASHBOARD -->
@@ -211,7 +320,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <div id="kpi-content" style="display:none">
     <div class="dhdr">
       <div><div class="dtitle" id="kpititle">KPI Dashboard</div><div class="dsub" id="kpisub"></div></div>
-      <div class="exrow"><button class="btnex" onclick="exportSingle()">Export to Excel</button><button class="btnsm" onclick="window.print()">Print / PDF</button></div>
+      <div class="exrow"><button class="btnex" onclick="exportSingle()">Export to Excel</button><button class="btnex" style="background:#c0392b" onclick="exportKpiPDF()">Export PDF</button></div>
     </div>
     <div id="scorearea"></div>
     <div id="kpisections"></div>
@@ -222,7 +331,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 <div class="panel" id="p-analysis">
   <div id="ai-empty" class="empty"><div class="ico">&#129302;</div><p>Run an import first to get your full analysis and action steps.</p></div>
   <div id="ai-content" style="display:none">
-    <div class="dhdr"><div><div class="dtitle">Analysis &amp; Insights</div><div class="dsub" id="aisub"></div></div><button class="btnsm" onclick="window.print()">Print</button></div>
+    <div class="dhdr"><div><div class="dtitle">Analysis &amp; Insights</div><div class="dsub" id="aisub"></div></div><button class="btnex" style="background:#c0392b" onclick="exportAnalysisPDF()">Export PDF</button></div>
     <div id="aiblocks"></div>
   </div>
 </div>
@@ -242,7 +351,10 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <div id="rec-content" style="display:none">
     <div class="dhdr">
       <div><div class="dtitle">Recommendations &amp; Action Plan</div><div class="dsub" id="recsub"></div></div>
-      <button class="btnex" onclick="exportRecs()">Export to Excel</button>
+      <div class="exrow">
+        <button class="btnex" onclick="exportRecs()">Export to Excel</button>
+        <button class="btnex" style="background:#c0392b" onclick="exportRecsPDF()">Export PDF</button>
+      </div>
     </div>
     <div id="rec-progress" style="display:none;margin-bottom:20px">
       <div class="stitle">Progress vs previous period</div>
@@ -260,6 +372,166 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════
+     COMPARE PERIODS TAB
+     ══════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-compare">
+  <div class="dhdr">
+    <div>
+      <div class="dtitle">⇄ Period Comparison</div>
+      <div class="dsub">Upload two different periods, compare every KPI side by side, and get a change-specific recommendation plan.</div>
+    </div>
+    <div class="exrow">
+      <button class="btnex" id="cmp-export-btn" onclick="exportComparison()" style="display:none">Export to Excel</button>
+    </div>
+  </div>
+
+  <!-- ── Step 1: pick from history or upload fresh ── -->
+  <div id="cmp-setup">
+    <div class="tip" style="margin-bottom:20px">
+      <strong>Two ways to compare:</strong> (1) Select two saved periods from your history below, or (2) upload fresh files for each period directly.
+    </div>
+
+    <!-- Load from history -->
+    <div id="cmp-hist-section" style="margin-bottom:20px;display:none">
+      <div class="stitle">Select from saved history</div>
+      <div class="g2" style="margin-bottom:10px">
+        <div>
+          <label class="lbl" style="color:#1a56db">Period A (baseline)</label>
+          <select id="cmp-sel-a" style="border:2px solid #1a56db">
+            <option value="">— select a period —</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl" style="color:#b45309">Period B (comparison)</label>
+          <select id="cmp-sel-b" style="border:2px solid #b45309">
+            <option value="">— select a period —</option>
+          </select>
+        </div>
+      </div>
+      <button class="btnrun" style="margin-top:0;max-width:320px" onclick="runFromHistory()">Compare Selected Periods</button>
+    </div>
+
+    <div class="or-row" id="cmp-or" style="display:none">
+      <div class="or-line"></div><span style="font-size:11px;color:var(--ink3);white-space:nowrap">or upload fresh files</span><div class="or-line"></div>
+    </div>
+
+    <!-- Upload fresh -->
+    <div class="cmp-split">
+      <!-- Period A -->
+      <div class="cmp-col">
+        <div class="cmp-col-hdr period-a">Period A &mdash; Baseline</div>
+        <div class="g2" style="margin-bottom:12px">
+          <div><label class="lbl">Label</label><input type="text" id="cmp-label-a" placeholder="e.g. Q1 2024"></div>
+          <div><label class="lbl">Employees</label><input type="number" id="cmp-emp-a" value="1" min="1"></div>
+        </div>
+        <div class="cmp-ugrid">
+          <div class="ucard" id="ccard-pl-a">
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="handleCmpFile(this,'a','pl')">
+            <div class="uico" style="font-size:20px">&#128202;</div>
+            <div class="utitle" style="font-size:12px">P&amp;L</div>
+            <div class="ust" id="cust-pl-a">Upload</div>
+          </div>
+          <div class="ucard" id="ccard-bs-a">
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="handleCmpFile(this,'a','bs')">
+            <div class="uico" style="font-size:20px">&#128203;</div>
+            <div class="utitle" style="font-size:12px">Balance Sheet</div>
+            <div class="ust" id="cust-bs-a">Upload</div>
+          </div>
+        </div>
+        <div class="cmp-ugrid" style="grid-template-columns:1fr">
+          <div class="ucard" id="ccard-cf-a">
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="handleCmpFile(this,'a','cf')">
+            <div class="uico" style="font-size:20px">&#128181;</div>
+            <div class="utitle" style="font-size:12px">Cash Flow (optional)</div>
+            <div class="ust" id="cust-cf-a">Upload</div>
+          </div>
+        </div>
+      </div>
+      <!-- Period B -->
+      <div class="cmp-col">
+        <div class="cmp-col-hdr period-b">Period B &mdash; Comparison</div>
+        <div class="g2" style="margin-bottom:12px">
+          <div><label class="lbl">Label</label><input type="text" id="cmp-label-b" placeholder="e.g. Q1 2025"></div>
+          <div><label class="lbl">Employees</label><input type="number" id="cmp-emp-b" value="1" min="1"></div>
+        </div>
+        <div class="cmp-ugrid">
+          <div class="ucard" id="ccard-pl-b">
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="handleCmpFile(this,'b','pl')">
+            <div class="uico" style="font-size:20px">&#128202;</div>
+            <div class="utitle" style="font-size:12px">P&amp;L</div>
+            <div class="ust" id="cust-pl-b">Upload</div>
+          </div>
+          <div class="ucard" id="ccard-bs-b">
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="handleCmpFile(this,'b','bs')">
+            <div class="uico" style="font-size:20px">&#128203;</div>
+            <div class="utitle" style="font-size:12px">Balance Sheet</div>
+            <div class="ust" id="cust-bs-b">Upload</div>
+          </div>
+        </div>
+        <div class="cmp-ugrid" style="grid-template-columns:1fr">
+          <div class="ucard" id="ccard-cf-b">
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="handleCmpFile(this,'b','cf')">
+            <div class="uico" style="font-size:20px">&#128181;</div>
+            <div class="utitle" style="font-size:12px">Cash Flow (optional)</div>
+            <div class="ust" id="cust-cf-b">Upload</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btnrun" id="cmp-runbtn" onclick="runComparison()">Run Comparison &amp; Generate Report</button>
+    <div id="cmperr"></div>
+  </div>
+
+  <!-- ── Results ── -->
+  <div id="cmp-results" style="display:none">
+
+    <!-- Score cards -->
+    <div class="cmp-section-title">Health Score Comparison</div>
+    <div class="cmp-scores" id="cmp-score-cards"></div>
+
+    <!-- Summary pills -->
+    <div class="cmp-section-title">What Changed</div>
+    <div class="cmp-summary-row" id="cmp-summary-pills"></div>
+
+    <!-- KPI table -->
+    <div class="cmp-section-title">KPI Side-by-Side</div>
+    <div style="overflow-x:auto;margin-bottom:24px">
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th style="min-width:200px">KPI</th>
+            <th class="r" id="cmp-th-a" style="min-width:110px;color:#1a56db">Period A</th>
+            <th class="r" id="cmp-th-b" style="min-width:110px;color:#b45309">Period B</th>
+            <th class="r" style="min-width:90px">Change</th>
+            <th style="min-width:100px">Direction</th>
+            <th style="min-width:100px">Status B</th>
+          </tr>
+        </thead>
+        <tbody id="cmp-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Change recommendations -->
+    <div class="cmp-section-title">Recommendations Based on What Changed</div>
+    <div class="stitle" id="crect-declined" style="display:none;color:var(--danger)">Declined — Needs attention</div>
+    <div id="crec-declined"></div>
+    <div class="stitle" id="crect-new-issue" style="display:none;color:var(--warn)">New issues in Period B</div>
+    <div id="crec-new-issue"></div>
+    <div class="stitle" id="crect-resolved" style="display:none;color:var(--info)">Resolved — Was a problem, now fixed</div>
+    <div id="crec-resolved"></div>
+    <div class="stitle" id="crect-improved" style="display:none;color:var(--success)">Improved — Keep this momentum</div>
+    <div id="crec-improved"></div>
+
+    <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btnsm" onclick="resetComparison()">← New Comparison</button>
+      <button class="btnex" id="cmp-save-btn" onclick="saveComparisonToHistory()" style="background:#0a7c4a">Save to History</button>
+      <button class="btnex" style="background:#c0392b" id="cmp-pdf-btn" onclick="exportComparisonPDF()">Export KPI PDF</button>
+      <button class="btnex" style="background:#7c3aed" id="cmp-recs-pdf-btn" onclick="exportComparisonRecsPDF()">Export Recommendations PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- HISTORY -->
 <div class="panel" id="p-history">
   <div class="dhdr">
@@ -271,123 +543,102 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <div id="histtrend"></div>
 </div>
 
-</div><!-- /app -->
+</div>
 <script>
-// //  BENCHMARKS
+// ── BENCHMARKS ────────────────────────────────────────────────────────────────
 var B={ecommerce:{name:"E-commerce / Online Retail",grossMargin:{g:42,o:30,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.8,o:1.2,li:false},quickRatio:{g:1.0,o:0.7,li:false},debtEquity:{g:0.4,o:0.9,li:true},debtAsset:{g:0.3,o:0.5,li:true},roe:{g:18,o:10,li:false},roa:{g:8,o:4,li:false},roi:{g:10,o:5,li:false},dso:{g:18,o:30,li:true},inventoryTurnover:{g:8,o:5,li:false},totalAssetTurnover:{g:1.6,o:1.0,li:false},salesPerEmployee:{g:250000,o:120000,li:false},contributionMargin:{g:42,o:30,li:false},breakevenPct:{g:45,o:65,li:true}},retail:{name:"Brick & Mortar Retail",grossMargin:{g:35,o:25,li:false},netMargin:{g:4,o:2,li:false},opMargin:{g:6,o:3,li:false},ebitdaMargin:{g:9,o:5,li:false},currentRatio:{g:1.6,o:1.2,li:false},quickRatio:{g:0.6,o:0.4,li:false},debtEquity:{g:0.6,o:1.2,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:14,o:7,li:false},roa:{g:6,o:3,li:false},roi:{g:8,o:4,li:false},dso:{g:8,o:18,li:true},inventoryTurnover:{g:10,o:6,li:false},totalAssetTurnover:{g:1.9,o:1.3,li:false},salesPerEmployee:{g:180000,o:90000,li:false},contributionMargin:{g:35,o:22,li:false},breakevenPct:{g:50,o:70,li:true}},saas:{name:"SaaS / Software",grossMargin:{g:75,o:60,li:false},netMargin:{g:18,o:6,li:false},opMargin:{g:20,o:8,li:false},ebitdaMargin:{g:22,o:12,li:false},currentRatio:{g:2.2,o:1.5,li:false},quickRatio:{g:1.8,o:1.2,li:false},debtEquity:{g:0.2,o:0.6,li:true},debtAsset:{g:0.2,o:0.4,li:true},roe:{g:22,o:12,li:false},roa:{g:12,o:6,li:false},roi:{g:15,o:8,li:false},dso:{g:28,o:45,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:0.9,o:0.5,li:false},salesPerEmployee:{g:350000,o:180000,li:false},contributionMargin:{g:75,o:60,li:false},breakevenPct:{g:30,o:55,li:true}},manufacturing:{name:"Manufacturing",grossMargin:{g:32,o:22,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.9,o:1.4,li:false},quickRatio:{g:0.9,o:0.6,li:false},debtEquity:{g:0.7,o:1.4,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:15,o:8,li:false},roa:{g:7,o:4,li:false},roi:{g:9,o:5,li:false},dso:{g:32,o:50,li:true},inventoryTurnover:{g:7,o:4,li:false},totalAssetTurnover:{g:0.9,o:0.6,li:false},salesPerEmployee:{g:220000,o:110000,li:false},contributionMargin:{g:32,o:20,li:false},breakevenPct:{g:50,o:70,li:true}},wholesale:{name:"Wholesale / Distribution",grossMargin:{g:22,o:14,li:false},netMargin:{g:4,o:2,li:false},opMargin:{g:5,o:2.5,li:false},ebitdaMargin:{g:7,o:4,li:false},currentRatio:{g:1.7,o:1.3,li:false},quickRatio:{g:0.8,o:0.5,li:false},debtEquity:{g:0.6,o:1.1,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:13,o:7,li:false},roa:{g:5,o:3,li:false},roi:{g:7,o:4,li:false},dso:{g:28,o:42,li:true},inventoryTurnover:{g:9,o:5,li:false},totalAssetTurnover:{g:1.6,o:1.1,li:false},salesPerEmployee:{g:600000,o:300000,li:false},contributionMargin:{g:22,o:14,li:false},breakevenPct:{g:55,o:75,li:true}},services:{name:"Professional Services",grossMargin:{g:65,o:48,li:false},netMargin:{g:18,o:9,li:false},opMargin:{g:22,o:12,li:false},ebitdaMargin:{g:25,o:14,li:false},currentRatio:{g:2.0,o:1.4,li:false},quickRatio:{g:1.6,o:1.1,li:false},debtEquity:{g:0.3,o:0.7,li:true},debtAsset:{g:0.2,o:0.4,li:true},roe:{g:22,o:13,li:false},roa:{g:13,o:7,li:false},roi:{g:16,o:9,li:false},dso:{g:28,o:45,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:1.1,o:0.7,li:false},salesPerEmployee:{g:180000,o:90000,li:false},contributionMargin:{g:65,o:48,li:false},breakevenPct:{g:30,o:50,li:true}},restaurant:{name:"Restaurant / Hospitality",grossMargin:{g:68,o:58,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.3,o:0.9,li:false},quickRatio:{g:0.6,o:0.3,li:false},debtEquity:{g:0.9,o:1.8,li:true},debtAsset:{g:0.5,o:0.7,li:true},roe:{g:18,o:9,li:false},roa:{g:9,o:4,li:false},roi:{g:11,o:6,li:false},dso:{g:4,o:12,li:true},inventoryTurnover:{g:22,o:14,li:false},totalAssetTurnover:{g:1.3,o:0.9,li:false},salesPerEmployee:{g:65000,o:40000,li:false},contributionMargin:{g:68,o:55,li:false},breakevenPct:{g:55,o:72,li:true}},realestate:{name:"Real Estate",grossMargin:{g:45,o:28,li:false},netMargin:{g:18,o:9,li:false},opMargin:{g:22,o:12,li:false},ebitdaMargin:{g:28,o:16,li:false},currentRatio:{g:1.6,o:1.1,li:false},quickRatio:{g:0.9,o:0.6,li:false},debtEquity:{g:1.8,o:3.5,li:true},debtAsset:{g:0.55,o:0.72,li:true},roe:{g:11,o:6,li:false},roa:{g:4,o:2,li:false},roi:{g:8,o:4,li:false},dso:{g:12,o:25,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:0.3,o:0.2,li:false},salesPerEmployee:{g:500000,o:250000,li:false},contributionMargin:{g:45,o:28,li:false},breakevenPct:{g:40,o:60,li:true}},healthcare:{name:"Healthcare / Medical",grossMargin:{g:45,o:32,li:false},netMargin:{g:10,o:5,li:false},opMargin:{g:13,o:7,li:false},ebitdaMargin:{g:16,o:9,li:false},currentRatio:{g:2.0,o:1.4,li:false},quickRatio:{g:1.4,o:0.9,li:false},debtEquity:{g:0.5,o:1.0,li:true},debtAsset:{g:0.35,o:0.55,li:true},roe:{g:16,o:9,li:false},roa:{g:8,o:4,li:false},roi:{g:10,o:6,li:false},dso:{g:35,o:55,li:true},inventoryTurnover:{g:10,o:6,li:false},totalAssetTurnover:{g:0.8,o:0.5,li:false},salesPerEmployee:{g:200000,o:110000,li:false},contributionMargin:{g:45,o:30,li:false},breakevenPct:{g:45,o:65,li:true}},construction:{name:"Construction",grossMargin:{g:22,o:14,li:false},netMargin:{g:6,o:3,li:false},opMargin:{g:8,o:4,li:false},ebitdaMargin:{g:10,o:6,li:false},currentRatio:{g:1.6,o:1.2,li:false},quickRatio:{g:1.0,o:0.7,li:false},debtEquity:{g:0.8,o:1.6,li:true},debtAsset:{g:0.45,o:0.65,li:true},roe:{g:14,o:8,li:false},roa:{g:6,o:3,li:false},roi:{g:8,o:4,li:false},dso:{g:35,o:55,li:true},inventoryTurnover:{g:8,o:5,li:false},totalAssetTurnover:{g:1.1,o:0.7,li:false},salesPerEmployee:{g:280000,o:140000,li:false},contributionMargin:{g:22,o:14,li:false},breakevenPct:{g:50,o:70,li:true}}};
 
-// //  STATE
+// ── STATE ─────────────────────────────────────────────────────────────────────
 var IND="ecommerce",LAST=null,LINS=null,LRECS=null,LPER="",LCO="";
 var FD={pl:null,bs:null,cf:null},RTYPE="monthly";
 var HIST=[];
 try{HIST=JSON.parse(localStorage.getItem("finiq_h")||"[]");}catch(e){}
+// Comparison state
+var CFD={a:{pl:null,bs:null,cf:null},b:{pl:null,bs:null,cf:null}};
+var CMPR={a:null,b:null,labelA:"",labelB:"",recs:{decl:[],newIssue:[],resolved:[],impr:[]}};
 
-// //  FILE HANDLING
+// ── FILE HANDLING ─────────────────────────────────────────────────────────────
 function handleFile(inp,type){
-  var file=inp.files[0];
-  if(!file)return;
+  var file=inp.files[0];if(!file)return;
   var card=document.getElementById("card-"+type);
   var stEl=document.getElementById("ust-"+type);
   var fnEl=document.getElementById("ufn-"+type);
-  stEl.textContent="Reading...";
-  card.classList.remove("done","errc");
+  stEl.textContent="Reading...";card.classList.remove("done","errc");
   var reader=new FileReader();
   reader.onload=function(e){
     try{
       var text="";
-      if(file.name.toLowerCase().endsWith(".csv")){
-        text=e.target.result;
-      } else {
-        var wb=XLSX.read(e.target.result,{type:"binary"});
-        var ws=wb.Sheets[wb.SheetNames[0]];
-        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
-        text=rows.map(function(r){return r.join("\t");}).join("\n");
-      }
-      FD[type]=text;
-      card.classList.add("done");
-      stEl.textContent="Uploaded successfully";
-      fnEl.textContent=file.name;
-    }catch(err){
-      card.classList.add("errc");
-      stEl.textContent="Error reading file - try again";
-      FD[type]=null;
-    }
+      if(file.name.toLowerCase().endsWith(".csv")){text=e.target.result;}
+      else{var wb=XLSX.read(e.target.result,{type:"binary"});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});text=rows.map(function(r){return r.join("\t");}).join("\n");}
+      FD[type]=text;card.classList.add("done");stEl.textContent="Uploaded successfully";fnEl.textContent=file.name;
+    }catch(err){card.classList.add("errc");stEl.textContent="Error reading file";FD[type]=null;}
   };
-  reader.onerror=function(){
-    card.classList.add("errc");
-    stEl.textContent="Failed to read file";
-    FD[type]=null;
-  };
-  if(file.name.toLowerCase().endsWith(".csv")){
-    reader.readAsText(file);
-  } else {
-    reader.readAsBinaryString(file);
-  }
+  reader.onerror=function(){card.classList.add("errc");stEl.textContent="Failed to read file";FD[type]=null;};
+  if(file.name.toLowerCase().endsWith(".csv")){reader.readAsText(file);}else{reader.readAsBinaryString(file);}
 }
 
-// //  PERIOD
+function handleCmpFile(inp,period,type){
+  var file=inp.files[0];if(!file)return;
+  var cardId="ccard-"+type+"-"+period;
+  var stId="cust-"+type+"-"+period;
+  var card=document.getElementById(cardId);
+  var stEl=document.getElementById(stId);
+  stEl.textContent="Reading...";card.classList.remove("done","errc");
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var text="";
+      if(file.name.toLowerCase().endsWith(".csv")){text=e.target.result;}
+      else{var wb=XLSX.read(e.target.result,{type:"binary"});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});text=rows.map(function(r){return r.join("\t");}).join("\n");}
+      CFD[period][type]=text;card.classList.add("done");stEl.textContent=file.name.substring(0,18)+(file.name.length>18?"…":"");
+    }catch(err){card.classList.add("errc");stEl.textContent="Error";CFD[period][type]=null;}
+  };
+  reader.onerror=function(){card.classList.add("errc");stEl.textContent="Failed";CFD[period][type]=null;};
+  if(file.name.toLowerCase().endsWith(".csv")){reader.readAsText(file);}else{reader.readAsBinaryString(file);}
+}
+
+// ── PERIOD ────────────────────────────────────────────────────────────────────
 function setR(t,el){
   RTYPE=t;
   document.querySelectorAll(".rtab").forEach(function(x){x.classList.remove("on");});
   el.classList.add("on");
-  ["monthly","quarterly","annual","weekly","custom"].forEach(function(x){
-    var e=document.getElementById("r-"+x);
-    if(e)e.classList.toggle("on",x===t);
-  });
+  ["monthly","quarterly","annual","weekly","custom"].forEach(function(x){var e=document.getElementById("r-"+x);if(e)e.classList.toggle("on",x===t);});
 }
 function getPer(){
   if(RTYPE==="monthly")return document.getElementById("mo").value+" "+document.getElementById("yrm").value;
   if(RTYPE==="quarterly")return document.getElementById("qtr").value+" "+document.getElementById("yrq").value;
   if(RTYPE==="annual")return"Full Year "+document.getElementById("yra").value;
   if(RTYPE==="weekly"){var s=document.getElementById("wks").value,e=document.getElementById("wke").value;return"Week "+(s||"?")+" to "+(e||"?");}
-  var s2=document.getElementById("cus").value,e2=document.getElementById("cue").value;
-  return(s2||"?")+" to "+(e2||"?");
+  var s2=document.getElementById("cus").value,e2=document.getElementById("cue").value;return(s2||"?")+" to "+(e2||"?");
 }
 
-// //  QB PARSER
+// ── QB PARSER ─────────────────────────────────────────────────────────────────
 function parseQB(text){
-  var map={};
-  if(!text)return map;
+  var map={};if(!text)return map;
   var lines=text.split("\n");
   for(var i=0;i<lines.length;i++){
-    var parts=lines[i].split("\t");
-    if(parts.length<2)continue;
-    var rawLabel=(parts[0]||"").trim();
-    if(!rawLabel)continue;
+    var parts=lines[i].split("\t");if(parts.length<2)continue;
+    var rawLabel=(parts[0]||"").trim();if(!rawLabel)continue;
     var val=null;
-    for(var p=parts.length-1;p>=1;p--){
-      var v=(parts[p]||"").trim();
-      if(!v||v.charAt(0)==="=")continue;
-      var n=parseFloat(v.replace(/[$,\s]/g,""));
-      if(!isNaN(n)){val=n;break;}
-    }
+    for(var p=parts.length-1;p>=1;p--){var v=(parts[p]||"").trim();if(!v||v.charAt(0)==="=")continue;var n=parseFloat(v.replace(/[$,\s]/g,""));if(!isNaN(n)){val=n;break;}}
     if(val===null)continue;
-    // Store under 4 normalized forms
     var f1=rawLabel.toLowerCase().trim();
     var f2=rawLabel.replace(/^\d{3,6}\s+/,"").toLowerCase().trim();
     var f3=f1.replace(/^total for \d*\s*/,"").replace(/^total for /,"").trim();
     var f4=f2.replace(/^total for \d*\s*/,"").replace(/^total for /,"").trim();
-    if(f1)map[f1]=val;
-    if(f2)map[f2]=val;
-    if(f3)map[f3]=val;
-    if(f4)map[f4]=val;
+    if(f1)map[f1]=val;if(f2)map[f2]=val;if(f3)map[f3]=val;if(f4)map[f4]=val;
   }
   return map;
 }
 function gv(map,keys){
   for(var k=0;k<keys.length;k++){
-    var key=keys[k].toLowerCase().trim();
-    if(map[key]!==undefined)return map[key];
-    for(var mk in map){
-      if(mk.length>5&&key.length>5){
-        if(mk.indexOf(key)===0||key.indexOf(mk)===0)return map[mk];
-      }
-    }
+    var key=keys[k].toLowerCase().trim();if(map[key]!==undefined)return map[key];
+    for(var mk in map){if(mk.length>5&&key.length>5){if(mk.indexOf(key)===0||key.indexOf(mk)===0)return map[mk];}}
   }
   return null;
 }
 
-// //  KPI CALCULATION
+// ── KPI CALCULATION ───────────────────────────────────────────────────────────
 function calcKPIs(plT,bsT,cfT,emp){
   var pl=parseQB(plT||""),bs=parseQB(bsT||""),cf=parseQB(cfT||"");
   var d={};
@@ -409,8 +660,38 @@ function calcKPIs(plT,bsT,cfT,emp){
   d.longDebt=gv(bs,["total for long-term liabilities","long-term liabilities","long term liabilities"]);
   d.totalLiab=gv(bs,["total for liabilities","total liabilities"]);
   d.equity=gv(bs,["total for equity","total equity","stockholders equity","shareholders equity","owners equity"]);
-  d.ocf=gv(cf,["net cash provided by operating activities","net cash from operating","operating cash flow","cash from operations"]);
-  d.capex=gv(cf,["capital expenditures","purchase of property","capex","purchases of property"]);
+  // OCF: QuickBooks uses many label variants depending on version and export format.
+  // We search broadly then validate the sign/magnitude makes sense.
+  d.ocf=gv(cf,[
+    "net cash provided by operating activities",
+    "net cash used in operating activities",
+    "net cash from operating activities",
+    "net cash provided by (used in) operating activities",
+    "net cash provided by operating",
+    "net cash used by operating activities",
+    "total operating activities",
+    "net cash from operating",
+    "operating cash flow",
+    "cash from operations",
+    "cash flows from operating activities",
+    "net operating cash flow",
+    "operating activities, net"
+  ]);
+  // CapEx: QB labels for investing outflows
+  d.capex=gv(cf,[
+    "purchase of property and equipment",
+    "purchase of property, plant and equipment",
+    "capital expenditures",
+    "purchases of property and equipment",
+    "purchases of property, plant",
+    "purchase of fixed assets",
+    "purchases of fixed assets",
+    "purchase of property",
+    "purchases of property",
+    "capex",
+    "acquisition of property",
+    "payments for property and equipment"
+  ]);
   var r={raw:d};
   var rev=d.revenue,gp=d.grossProfit||(rev&&d.cogs!=null?rev-d.cogs:null);
   var ni=d.netIncome,ca=d.currentAssets,cl=d.currentLiab;
@@ -441,18 +722,23 @@ function calcKPIs(plT,bsT,cfT,emp){
   return r;
 }
 
-// //  HELPERS
+// ── HELPERS ───────────────────────────────────────────────────────────────────
 function gs(val,bk){if(val==null||isNaN(val))return"na";if(!bk||bk.g==null)return"na";if(bk.li){if(val<=bk.g)return"good";if(val<=bk.o)return"warn";return"bad";}if(val>=bk.g)return"good";if(val>=bk.o)return"warn";return"bad";}
 function sl(s){return{good:"Above target",warn:"Below target",bad:"Needs attention",na:"N/A"}[s]||"N/A";}
 function fmt(v,t){if(v==null||isNaN(v))return"N/A";if(t==="pct")return v.toFixed(1)+"%";if(t==="ratio")return v.toFixed(2)+"x";if(t==="turns")return v.toFixed(1)+"x/yr";if(t==="days")return Math.round(v)+" days";if(t==="usd")return"$"+Math.round(v).toLocaleString();return String(v);}
 
-// //  RENDER KPIs
-function renderKPIs(r){
+function calcScore(r){
   var b=B[IND];
   var checks=[{v:r.grossMargin,bk:b.grossMargin},{v:r.netMargin,bk:b.netMargin},{v:r.currentRatio,bk:b.currentRatio},{v:r.quickRatio,bk:b.quickRatio},{v:r.debtEquity,bk:b.debtEquity},{v:r.roe,bk:b.roe},{v:r.dso,bk:b.dso},{v:r.inventoryTurnover,bk:b.inventoryTurnover}];
   var pts=0,tot=0;
   checks.forEach(function(c){if(c.v==null||!c.bk||c.bk.g==null)return;tot+=2;var s=gs(c.v,c.bk);if(s==="good")pts+=2;else if(s==="warn")pts+=1;});
-  var score=tot>0?Math.round(pts/tot*100):50;
+  return tot>0?Math.round(pts/tot*100):50;
+}
+
+// ── RENDER KPIs ───────────────────────────────────────────────────────────────
+function renderKPIs(r){
+  var b=B[IND];
+  var score=calcScore(r);
   var col=score>=70?"#0a7c4a":score>=45?"#b45309":"#c0392b";
   var slbl=score>=70?"Financially Healthy":score>=45?"Needs Attention":"At Risk";
   var circ=Math.round(score/100*220);
@@ -474,13 +760,13 @@ function renderKPIs(r){
     });
     html+='</div></div>';
   });
-  if(r.negativeEquity)html='<div style="padding:12px 16px;background:var(--dbg);border-radius:var(--r);margin-bottom:16px;font-size:12px;color:var(--danger);font-weight:600">&#9888; Negative equity detected - total liabilities exceed total assets. See Recommendations tab for action steps.</div>'+html;
+  if(r.negativeEquity)html='<div style="padding:12px 16px;background:var(--dbg);border-radius:var(--r);margin-bottom:16px;font-size:12px;color:var(--danger);font-weight:600">&#9888; Negative equity detected.</div>'+html;
   document.getElementById("kpisections").innerHTML=html;
   document.getElementById("kpi-content").style.display="block";
   document.getElementById("kpi-empty").style.display="none";
 }
 
-// //  RENDER ANALYSIS
+// ── RENDER ANALYSIS ───────────────────────────────────────────────────────────
 function renderAnalysis(ins){
   var bm={good:"good",warn:"warn",risk:"risk",info:"info"},lm={good:"Strength",warn:"Watch",risk:"Risk Flag",info:"Insight"};
   document.getElementById("aiblocks").innerHTML=ins.map(function(i){return'<div class="acard"><div class="ahead"><span class="abadge '+(bm[i.type]||"info")+'">'+(lm[i.type]||"Note")+'</span><span class="atitle">'+i.title+'</span></div><div class="abody">'+i.body+'</div>'+(i.action?'<div class="aaction"><strong>Action step</strong>'+i.action+'</div>':'')+' </div>';}).join("");
@@ -489,7 +775,7 @@ function renderAnalysis(ins){
   document.getElementById("aisub").textContent=LPER+" -- "+LCO;
 }
 
-// //  RENDER BENCHMARK
+// ── RENDER BENCHMARK ──────────────────────────────────────────────────────────
 function renderBM(r){
   var b=B[IND];
   document.getElementById("bmsub").textContent=LCO+" -- "+LPER+" vs "+b.name;
@@ -499,59 +785,64 @@ function renderBM(r){
   document.getElementById("bm-empty").style.display="none";
 }
 
-// //  RECOMMENDATIONS ENGINE
+// ── RECOMMENDATIONS ENGINE ────────────────────────────────────────────────────
 function generateRecs(r){
   var b=B[IND],ind=B[IND].name,recs=[];
   function addR(pri,kpi,title,cur,tgt,body,steps,impact){recs.push({priority:pri,kpi:kpi,title:title,current:cur,target:tgt,body:body,steps:steps,impact:impact});}
   var rev=r.raw&&r.raw.revenue?r.raw.revenue:0;
-
-  if(r.grossMargin!=null){var s=gs(r.grossMargin,b.grossMargin);
-    if(s==="bad")addR("critical","Gross Margin","Gross margin "+r.grossMargin.toFixed(1)+"% is critically below benchmark",r.grossMargin.toFixed(1)+"%",b.grossMargin.g+"%","You are keeping only $"+r.grossMargin.toFixed(0)+" per $100 in sales after product costs. The "+ind+" benchmark is "+b.grossMargin.g+"%. This is your most important metric to fix.",["Audit every line item inside COGS -- identify the top 3 cost drivers and challenge each one.","Run a product-level margin analysis. Any SKU below 20% gross margin should be repriced or discontinued.","Renegotiate supplier terms on your top 5 products by volume. Even a 3-5% reduction moves the overall margin significantly.","Review shipping and fulfillment costs -- these are often inside COGS and are the fastest lever.","Test a 5-10% price increase on your top 10 products. Measure conversion before rolling out broadly."],"Every 1% improvement in gross margin adds $"+Math.round(rev*12*0.01).toLocaleString()+" to annual profit.");
-    else if(s==="warn")addR("high","Gross Margin","Gross margin "+r.grossMargin.toFixed(1)+"% is below the "+b.grossMargin.g+"% target",r.grossMargin.toFixed(1)+"%",b.grossMargin.g+"%","You are "+(b.grossMargin.g-r.grossMargin).toFixed(1)+"% below benchmark. Improvement here does not require growing revenue.",["Shift marketing spend toward your highest-margin products.","Review payment processing fees -- often negotiable or reducible by switching processors.","Bundle lower-margin products with higher-margin ones to lift average basket margin."],"Closing half the gap to benchmark adds $"+Math.round(rev*12*(b.grossMargin.g-r.grossMargin)*0.005).toLocaleString()+" annually.");
-    else addR("good","Gross Margin","Gross margin "+r.grossMargin.toFixed(1)+"% is above benchmark",r.grossMargin.toFixed(1)+"%",b.grossMargin.g+"%","Strong. You are retaining more from each sale than the industry average.",["Maintain pricing discipline as you scale. Resist discounting unless strategically justified.","Document what drives this margin advantage to protect it as the business grows."],"This margin strength is your primary competitive moat -- protect it.");}
-
-  if(r.currentRatio!=null){var s2=gs(r.currentRatio,b.currentRatio);
-    if(s2==="bad")addR("critical","Current Ratio","Current ratio "+r.currentRatio.toFixed(2)+"x signals liquidity risk",r.currentRatio.toFixed(2)+"x",b.currentRatio.g+"x","Current liabilities are not adequately covered by current assets. A major payment demand could create a cash crisis.",["Build a 13-week cash flow forecast immediately.","Accelerate collections on all outstanding receivables.","Negotiate extended payment terms with key suppliers -- 30 to 45 or 60 days.","Explore a revolving line of credit as a safety buffer.","Delay non-essential capital purchases until ratio improves above 1.5x."],"Improving to 1.5x requires reducing current liabilities or increasing liquid assets by $"+Math.round(r.raw.currentLiab*0.15).toLocaleString()+".");
-    else if(s2==="warn")addR("high","Current Ratio","Current ratio "+r.currentRatio.toFixed(2)+"x is below the "+b.currentRatio.g+"x target",r.currentRatio.toFixed(2)+"x",b.currentRatio.g+"x","Adequate but a seasonal dip or unexpected expense could create cash pressure.",["Monitor weekly during peak expense months.","Build a 60-day cash reserve.","Review which current liabilities can be refinanced as longer-term obligations."],"Getting to 1.5x adds meaningful protection against unexpected events.");}
-
-  if(r.quickRatio!=null){var s3=gs(r.quickRatio,b.quickRatio);
-    if(s3==="bad"||s3==="warn")addR("high","Quick Ratio","Quick ratio "+r.quickRatio.toFixed(2)+"x -- liquid assets are thin after removing inventory",r.quickRatio.toFixed(2)+"x",b.quickRatio.g+"x","After removing inventory your liquid assets cover only "+(r.quickRatio*100).toFixed(0)+"% of current liabilities. Inventory is not instantly convertible to cash.",["Do not rely on inventory as a liquidity buffer.","Build cash reserves equal to at least 1 month of operating expenses.","Review inventory levels -- you may be holding more stock than needed relative to your cash position.","Consider whether any slow-moving inventory can be liquidated to improve the ratio."],"Getting quick ratio to 1.0x means having an extra $"+Math.round(r.raw.currentLiab-(r.raw.currentAssets-r.raw.inventory)).toLocaleString()+" in truly liquid assets.");}
-
-  if(r.inventoryTurnover!=null&&b.inventoryTurnover.g!=null){var s4=gs(r.inventoryTurnover,b.inventoryTurnover);
-    if(s4==="bad")addR("critical","Inventory Turnover","Inventory turning at "+r.inventoryTurnover.toFixed(1)+"x/yr -- capital is trapped in slow stock",r.inventoryTurnover.toFixed(1)+"x/yr",b.inventoryTurnover.g+"x/yr","At "+r.inventoryTurnover.toFixed(1)+"x annualized each unit sits an average of "+Math.round(365/r.inventoryTurnover)+" days before selling. The target is "+Math.round(365/b.inventoryTurnover.g)+" days.",["Run a full SKU analysis sorted by days-in-warehouse. Your bottom 20% are cash traps.","Mark down slow-moving inventory aggressively. 60 cents recovered beats zero.","Tighten reorder points -- base them on actual 30-day sales velocity not estimates.","Pause purchasing on any SKU with more than 90 days of stock on hand.","Consider dropshipping for slow-moving SKUs instead of holding stock."],"Improving to benchmark turnover would free approximately $"+Math.round(r.raw.inventory*(1-b.inventoryTurnover.o/12)).toLocaleString()+" in cash currently tied up in stock.");
-    else if(s4==="warn")addR("medium","Inventory Turnover","Inventory turnover "+r.inventoryTurnover.toFixed(1)+"x/yr is below the "+b.inventoryTurnover.g+"x target",r.inventoryTurnover.toFixed(1)+"x/yr",b.inventoryTurnover.g+"x/yr","Slightly below target. Monthly review of slow-moving SKUs will gradually improve this.",["Review your bottom 10 SKUs by turnover monthly and reduce reorder quantities on slow movers.","Align purchasing with actual recent sales velocity."],"Getting to benchmark would improve cash flow and reduce storage costs.");
-    else addR("good","Inventory Turnover","Inventory turning at "+r.inventoryTurnover.toFixed(1)+"x/yr -- above benchmark",r.inventoryTurnover.toFixed(1)+"x/yr",b.inventoryTurnover.g+"x/yr","Good inventory discipline. Stock is moving efficiently.",["Maintain current reorder discipline.","Ensure you are not running so lean that you risk stockouts on top sellers."],"Strong turnover means capital is working efficiently.");}
-
-  if(r.dso!=null){var s5=gs(r.dso,b.dso);
-    if(s5==="bad")addR("high","Days Sales Outstanding","Collecting in "+Math.round(r.dso)+" days -- cash tied up too long",Math.round(r.dso)+" days",b.dso.g+" days","Customers taking "+Math.round(r.dso)+" days to pay vs the "+b.dso.g+"-day target. Every extra day delays your cash cycle.",["Send automated payment reminders at day 15 and day 25.","Offer 1-2% early payment discount for payment within 10 days.","Identify top 5 slow-paying customers and renegotiate their terms.","Require 30-50% deposit upfront on large orders.","Ensure invoices go out immediately on delivery."],"Cutting DSO to "+b.dso.g+" days would release approximately $"+Math.round(rev/31*(Math.round(r.dso)-b.dso.g)).toLocaleString()+" in cash.");
-    else addR("good","Days Sales Outstanding","Excellent DSO of "+Math.round(r.dso)+" days -- collecting quickly",Math.round(r.dso)+" days",b.dso.g+" days","One of your key operational strengths. Cash is coming in very fast.",["Maintain current collection processes.","Watch for creep as you bring on larger customers who may request longer terms."],"Strong DSO is a major contributor to your positive operating cash flow.");}
-
-  if(r.debtAsset!=null){var s6=gs(r.debtAsset,b.debtAsset);
-    if(s6==="bad")addR("critical","Debt to Assets","Debt to assets "+r.debtAsset.toFixed(2)+"x -- heavily leveraged",r.debtAsset.toFixed(2)+"x",b.debtAsset.g+"x","For every $1 of assets the business carries $"+r.debtAsset.toFixed(2)+" of debt. Benchmark is $"+b.debtAsset.g+". A revenue decline would quickly create a crisis.",["Do not take on any new debt until this ratio improves.","Prioritize long-term debt reduction alongside operating profitability.","Ensure loan payments are covered by operating cash flow with margin to spare.","Review whether any assets can be sold or liabilities restructured.","Build a quarterly debt reduction roadmap with specific milestones."],"Reducing debt by 10% would bring this to "+((r.debtAsset*0.9)).toFixed(2)+"x and significantly reduce financial risk.");}
-
-  if(r.negativeEquity)addR("critical","Equity Position","Negative equity -- liabilities exceed assets by $"+Math.abs(Math.round(r.raw.equity)).toLocaleString(),"$"+Math.round(r.raw.equity).toLocaleString(),"Positive equity","Total liabilities exceed total assets. Often driven by debt-financed growth or distributions to owners. Critical flag for lenders and investors.",["Understand the composition: is it primarily from distributions, accumulated losses, or debt?","Stop distributions until equity turns positive if cash flow allows.","Retain net income inside the business rather than distributing it.","Consult your accountant on tax and legal implications.","Build a multi-year plan to return equity to positive through retained earnings."],"At current net income levels equity could turn positive within "+Math.ceil(Math.abs(r.raw.equity)/(r.raw.netIncome*12))+" years if fully retained.");
-
-  if(r.ocfVal!=null){
-    if(r.ocfVal<0)addR("critical","Operating Cash Flow","Negative operating cash flow -$"+Math.abs(Math.round(r.ocfVal)).toLocaleString(),"$"+Math.round(r.ocfVal).toLocaleString(),"Positive","Day to day operations are consuming more cash than they generate. Unsustainable.",["Identify the largest cash drains in the operating cycle.","Stop all non-essential spending immediately.","Address operating profitability before any growth investment."],"Turning OCF positive is the highest priority for business survival.");
-    else addR("good","Operating Cash Flow","Strong positive operating cash flow $"+Math.round(r.ocfVal).toLocaleString(),"$"+Math.round(r.ocfVal).toLocaleString(),"Positive","The business is generating real cash from operations. One of the strongest indicators of financial health.",["Deploy surplus OCF strategically: debt reduction, inventory optimization, or growth investment.","Build a cash buffer to protect OCF through seasonal dips."],"Protecting positive OCF as you scale is your most important financial priority.");}
-
-  if(r.netMargin!=null){var s7=gs(r.netMargin,b.netMargin);
-    if(s7==="warn")addR("medium","Net Margin","Net margin "+r.netMargin.toFixed(1)+"% is below the "+b.netMargin.g+"% target",r.netMargin.toFixed(1)+"%",b.netMargin.g+"%","The gap between gross and net margin is "+(r.grossMargin-r.netMargin).toFixed(1)+"%. Operating costs are consuming too much gross profit.",["Rank all operating expenses by size and challenge the top 3.","Review all software subscriptions, insurance, and service contracts.","Consider whether any tasks can be automated to reduce labor costs."],"A 2% net margin improvement adds $"+Math.round(rev*12*0.02).toLocaleString()+" to annual profit.");}
-
+  if(r.grossMargin!=null){var s=gs(r.grossMargin,b.grossMargin);if(s==="bad")addR("critical","Gross Margin","Gross margin "+r.grossMargin.toFixed(1)+"% is critically below benchmark",r.grossMargin.toFixed(1)+"%",b.grossMargin.g+"%","You are keeping only $"+r.grossMargin.toFixed(0)+" per $100 in sales after product costs. The "+ind+" benchmark is "+b.grossMargin.g+"%.",["Audit every COGS line item — identify the top 3 cost drivers and challenge each one.","Run a product-level margin analysis. Any SKU below 20% gross margin should be repriced or discontinued.","Renegotiate supplier terms on your top 5 products by volume. Even a 3-5% reduction moves overall margin.","Review shipping and fulfillment costs — these are often inside COGS and are the fastest lever.","Test a 5-10% price increase on your top 10 products. Measure conversion before rolling out broadly."],"Every 1% improvement adds $"+Math.round(rev*12*0.01).toLocaleString()+" annually.");else if(s==="warn")addR("high","Gross Margin","Gross margin "+r.grossMargin.toFixed(1)+"% below target",r.grossMargin.toFixed(1)+"%",b.grossMargin.g+"%","You are "+(b.grossMargin.g-r.grossMargin).toFixed(1)+"% below benchmark.",["Shift marketing to highest-margin products.","Review payment processing fees.","Bundle lower-margin with higher-margin products."],"Closing half the gap adds $"+Math.round(rev*12*(b.grossMargin.g-r.grossMargin)*0.005).toLocaleString()+" annually.");else addR("good","Gross Margin","Gross margin "+r.grossMargin.toFixed(1)+"% above benchmark",r.grossMargin.toFixed(1)+"%",b.grossMargin.g+"%","Strong.",["Maintain pricing discipline.","Document what drives this margin advantage."],"This is your primary competitive moat.");}
+  if(r.currentRatio!=null){var s2=gs(r.currentRatio,b.currentRatio);if(s2==="bad")addR("critical","Current Ratio","Current ratio "+r.currentRatio.toFixed(2)+"x signals liquidity risk",r.currentRatio.toFixed(2)+"x",b.currentRatio.g+"x","Current liabilities not adequately covered.",["Build 13-week cash flow forecast.","Accelerate collections.","Negotiate extended supplier terms.","Explore revolving credit line.","Delay non-essential capital purchases."],"Improving to 1.5x requires reducing liabilities by $"+Math.round(r.raw.currentLiab*0.15).toLocaleString()+".");else if(s2==="warn")addR("high","Current Ratio","Current ratio "+r.currentRatio.toFixed(2)+"x below target",r.currentRatio.toFixed(2)+"x",b.currentRatio.g+"x","Adequate but vulnerable.",["Monitor weekly.","Build 60-day cash reserve.","Refinance some current liabilities as longer-term."],"Getting to 1.5x adds meaningful protection.");}
+  if(r.inventoryTurnover!=null&&b.inventoryTurnover.g!=null){var s4=gs(r.inventoryTurnover,b.inventoryTurnover);if(s4==="bad")addR("critical","Inventory Turnover","Inventory turning at "+r.inventoryTurnover.toFixed(1)+"x/yr",r.inventoryTurnover.toFixed(1)+"x/yr",b.inventoryTurnover.g+"x/yr","Each unit sits "+Math.round(365/r.inventoryTurnover)+" days on average.",["Run SKU analysis by days-in-warehouse.","Mark down slow-movers aggressively.","Tighten reorder points to 30-day sales velocity.","Pause purchasing on SKUs with >90 days stock.","Consider dropshipping for slow movers."],"Improving to benchmark would free $"+Math.round(r.raw.inventory*0.2).toLocaleString()+" in cash.");else if(s4==="warn")addR("medium","Inventory Turnover","Inventory turnover "+r.inventoryTurnover.toFixed(1)+"x/yr below target",r.inventoryTurnover.toFixed(1)+"x/yr",b.inventoryTurnover.g+"x/yr","Slightly below target.",["Review bottom 10 SKUs monthly.","Align purchasing with recent sales velocity."],"Getting to benchmark improves cash flow.");else addR("good","Inventory Turnover","Inventory turning at "+r.inventoryTurnover.toFixed(1)+"x/yr above benchmark",r.inventoryTurnover.toFixed(1)+"x/yr",b.inventoryTurnover.g+"x/yr","Good inventory discipline.",["Maintain reorder discipline.","Ensure you are not running too lean on top sellers."],"Strong turnover means capital is working efficiently.");}
+  if(r.dso!=null){var s5=gs(r.dso,b.dso);if(s5==="bad")addR("high","DSO","Collecting in "+Math.round(r.dso)+" days -- cash tied up",Math.round(r.dso)+" days",b.dso.g+" days","Target is "+b.dso.g+" days.",["Send automated reminders at day 15 and 25.","Offer early payment discount.","Renegotiate terms with slow-paying customers.","Require 30-50% deposit on large orders.","Invoice immediately on delivery."],"Cutting DSO to "+b.dso.g+" days releases $"+Math.round(rev/31*(Math.round(r.dso)-b.dso.g)).toLocaleString()+".");else addR("good","DSO","Excellent DSO of "+Math.round(r.dso)+" days",Math.round(r.dso)+" days",b.dso.g+" days","Collecting fast.",["Maintain current collection processes.","Watch for creep with larger customers."],"Strong DSO contributes to positive cash flow.");}
+  if(r.debtAsset!=null&&gs(r.debtAsset,b.debtAsset)==="bad")addR("critical","Debt to Assets","Debt to assets "+r.debtAsset.toFixed(2)+"x -- heavily leveraged",r.debtAsset.toFixed(2)+"x",b.debtAsset.g+"x","Heavy debt vs asset base.",["No new debt until ratio improves.","Prioritize long-term debt reduction.","Review all assets for sale or restructuring.","Build quarterly debt reduction roadmap."],"Reducing debt 10% would bring this to "+((r.debtAsset*0.9)).toFixed(2)+"x.");
+  if(r.negativeEquity)addR("critical","Equity","Negative equity -- liabilities exceed assets","$"+Math.round(r.raw.equity).toLocaleString(),"Positive","Total liabilities exceed total assets.",["Understand the composition -- distributions vs losses vs debt.","Stop distributions until equity turns positive.","Retain net income inside the business.","Consult accountant on tax implications."],"Equity could turn positive in "+Math.ceil(Math.abs(r.raw.equity)/(r.raw.netIncome*12))+" years if fully retained.");
+  if(r.ocfVal!=null){if(r.ocfVal<0)addR("critical","OCF","Negative operating cash flow -$"+Math.abs(Math.round(r.ocfVal)).toLocaleString(),"$"+Math.round(r.ocfVal).toLocaleString(),"Positive","Operations consuming cash.",["Identify largest cash drains.","Stop all non-essential spending.","Fix profitability before growth investment."],"Turning OCF positive is the highest priority.");else addR("good","OCF","Positive operating cash flow $"+Math.round(r.ocfVal).toLocaleString(),"$"+Math.round(r.ocfVal).toLocaleString(),"Positive","Core business generating real cash.",["Deploy surplus OCF: debt, inventory, or growth.","Build seasonal cash buffer."],"Positive OCF is your most important financial signal.");}
+  if(r.netMargin!=null&&gs(r.netMargin,b.netMargin)==="warn")addR("medium","Net Margin","Net margin "+r.netMargin.toFixed(1)+"% below target",r.netMargin.toFixed(1)+"%",b.netMargin.g+"%","Gap: gross to net is "+(r.grossMargin-r.netMargin).toFixed(1)+"%.",["Rank all operating expenses and challenge top 3.","Review all subscriptions and service contracts.","Consider automation to reduce labor costs."],"2% net margin improvement adds $"+Math.round(rev*12*0.02).toLocaleString()+" annually.");
   return recs;
 }
 
 function renderRecs(r,period,company){
-  var recs=generateRecs(r);
-  LRECS=recs;
+  var recs=generateRecs(r);LRECS=recs;
   var critical=recs.filter(function(x){return x.priority==="critical";});
   var high=recs.filter(function(x){return x.priority==="high";});
   var medium=recs.filter(function(x){return x.priority==="medium";});
   var good=recs.filter(function(x){return x.priority==="good";});
   document.getElementById("recsub").textContent=company+" -- "+period;
+  var _rcId=0;
   function makeCard(rec){
-    var steps=rec.steps.map(function(a,i){return'<div style="display:flex;gap:8px;margin-bottom:4px"><span style="color:var(--accent);font-weight:700;flex-shrink:0">'+(i+1)+'.</span><span>'+a+'</span></div>';}).join("");
-    return'<div class="rcard '+rec.priority+'"><div class="rcard-head"><div class="rcard-title">'+rec.title+'</div><div class="rcard-meta"><span class="rpill '+rec.priority+'">'+rec.priority.toUpperCase()+'</span><span class="rcard-kpi">'+rec.kpi+': <strong>'+rec.current+'</strong> &rarr; target <strong>'+rec.target+'</strong></span></div></div><div class="rcard-body">'+rec.body+'</div><div class="rcard-steps"><strong>Action steps</strong>'+steps+'</div><div class="rcard-impact">&#128161; Impact: '+rec.impact+'</div></div>';
+    var id="rc-"+(++_rcId);
+    var priCol={critical:"var(--danger)",high:"var(--warn)",medium:"var(--info)",good:"var(--success)"};
+    var col=priCol[rec.priority]||"var(--ink3)";
+    var steps=rec.steps.map(function(a,i){
+      return'<div style="display:flex;gap:8px;margin-bottom:5px">'+
+        '<span style="color:var(--accent);font-weight:700;flex-shrink:0;min-width:16px">'+(i+1)+'.</span>'+
+        '<span style="line-height:1.6">'+a+'</span>'+
+      '</div>';
+    }).join("");
+    return'<div class="rcard '+rec.priority+'" style="margin-bottom:10px">'+
+      '<div onclick="toggleRecCard(\''+id+'\')" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
+        '<div style="flex:1">'+
+          '<div class="rcard-head" style="margin-bottom:5px">'+
+            '<div class="rcard-title">'+rec.title+'</div>'+
+            '<div class="rcard-meta">'+
+              '<span class="rpill '+rec.priority+'">'+rec.priority.toUpperCase()+'</span>'+
+              '<span class="rcard-kpi">'+rec.kpi+': <strong>'+rec.current+'</strong> → target <strong>'+rec.target+'</strong></span>'+
+            '</div>'+
+          '</div>'+
+          '<div class="rcard-body" style="font-size:12px;color:var(--ink2);line-height:1.7">'+rec.body+'</div>'+
+        '</div>'+
+        '<span id="'+id+'-arr" style="font-size:20px;color:'+col+';flex-shrink:0;margin-top:2px">▸</span>'+
+      '</div>'+
+      '<div id="'+id+'" style="display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:12px">'+
+        '<div class="rcard-steps" style="margin-bottom:10px">'+
+          '<strong style="display:block;color:var(--ink);font-size:11px;margin-bottom:8px">Action steps</strong>'+
+          steps+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--ink3);font-style:italic;padding:8px 12px;background:rgba(255,255,255,0.5);border-radius:6px">'+
+          '💡 Impact: '+rec.impact+
+        '</div>'+
+      '</div>'+
+    '</div>';
   }
   document.getElementById("rect-critical").style.display=critical.length?"block":"none";
   document.getElementById("rect-high").style.display=high.length?"block":"none";
@@ -561,19 +852,15 @@ function renderRecs(r,period,company){
   document.getElementById("rec-high").innerHTML=high.map(makeCard).join("");
   document.getElementById("rec-medium").innerHTML=medium.map(makeCard).join("");
   document.getElementById("rec-good").innerHTML=good.map(makeCard).join("");
-
-  // Progress tracker
   if(HIST.length>=2){
-    var lat=HIST[0],prv=HIST[1];
+    var prv=HIST[1];
     var kpis=[{n:"Gross Margin",c:r.grossMargin,p:prv.kpis.grossMargin,t:"pct",better:"up"},{n:"Net Margin",c:r.netMargin,p:prv.kpis.netMargin,t:"pct",better:"up"},{n:"Current Ratio",c:r.currentRatio,p:prv.kpis.currentRatio,t:"ratio",better:"up"},{n:"Quick Ratio",c:r.quickRatio,p:prv.kpis.quickRatio,t:"ratio",better:"up"},{n:"DSO",c:r.dso,p:prv.kpis.dso,t:"days",better:"down"},{n:"Inventory Turnover",c:r.inventoryTurnover,p:prv.kpis.inventoryTurnover,t:"turns",better:"up"},{n:"Debt/Assets",c:r.debtAsset,p:prv.kpis.debtAsset,t:"ratio",better:"down"},{n:"Working Capital",c:r.workingCapital,p:prv.kpis.workingCapital,t:"usd",better:"up"}];
     var ph="";
     kpis.forEach(function(km){if(km.c==null||km.p==null)return;var diff=km.c-km.p;var imp=km.better==="up"?diff>0.01:diff<-0.01;var dec=km.better==="up"?diff<-0.01:diff>0.01;var badge=imp?"improved":dec?"declined":"flat";var badgeTxt=imp?"Improved":dec?"Declined":"No change";var arr=imp?"&#9650;":dec?"&#9660;":"&#8212;";var cls=imp?"tup":dec?"tdown":"tflat";ph+='<div class="prog-item"><span class="prog-name">'+km.n+'</span><span class="prog-vals"><span>'+fmt(km.p,km.t)+'</span><span class="'+cls+'"> '+arr+' </span><span>'+fmt(km.c,km.t)+'</span></span><span class="prog-badge '+badge+'">'+badgeTxt+'</span></div>';});
     document.getElementById("rec-progress-list").innerHTML=ph;
     document.getElementById("rec-progress").style.display=ph?"block":"none";
   }
-
-  // Rec history
-  var hh=HIST.filter(function(h){return h.recs&&h.recs.length;}).map(function(h,i){var cr=h.recs.filter(function(x){return x.priority==="critical";}).length;var hi=h.recs.filter(function(x){return x.priority==="high";}).length;return'<div class="rhist-item" onclick="loadRecHist('+HIST.indexOf(h)+')"><div class="rhist-period">'+h.period+' -- '+h.company+'</div><div class="rhist-meta">'+(cr?'<span style="color:var(--danger);font-weight:600">'+cr+' Critical</span> ':'')+(hi?'<span style="color:var(--warn);font-weight:600">'+hi+' High</span> ':'')+' | '+B[h.industry].name+' | Saved '+h.savedAt+'</div></div>';}).join("");
+  var hh=HIST.filter(function(h){return h.recs&&h.recs.length;}).map(function(h){var cr=h.recs.filter(function(x){return x.priority==="critical";}).length;var hi=h.recs.filter(function(x){return x.priority==="high";}).length;return'<div class="rhist-item" onclick="loadRecHist('+HIST.indexOf(h)+')"><div class="rhist-period">'+h.period+' -- '+h.company+'</div><div class="rhist-meta">'+(cr?'<span style="color:var(--danger);font-weight:600">'+cr+' Critical</span> ':'')+(hi?'<span style="color:var(--warn);font-weight:600">'+hi+' High</span> ':'')+'</div></div>';}).join("");
   document.getElementById("rec-hist-section").innerHTML=hh?'<div class="stitle" style="margin-top:24px">Past recommendation reports</div>'+hh:"";
   document.getElementById("rec-content").style.display="block";
   document.getElementById("rec-empty").style.display="none";
@@ -586,7 +873,27 @@ function loadRecHist(i){
   var high=h.recs.filter(function(x){return x.priority==="high";});
   var medium=h.recs.filter(function(x){return x.priority==="medium";});
   var good=h.recs.filter(function(x){return x.priority==="good";});
-  function makeCard(rec){var steps=rec.steps.map(function(a,i2){return'<div style="display:flex;gap:8px;margin-bottom:4px"><span style="color:var(--accent);font-weight:700;flex-shrink:0">'+(i2+1)+'.</span><span>'+a+'</span></div>';}).join("");return'<div class="rcard '+rec.priority+'"><div class="rcard-head"><div class="rcard-title">'+rec.title+'</div><div class="rcard-meta"><span class="rpill '+rec.priority+'">'+rec.priority.toUpperCase()+'</span><span class="rcard-kpi">'+rec.kpi+': <strong>'+rec.current+'</strong> &rarr; <strong>'+rec.target+'</strong></span></div></div><div class="rcard-body">'+rec.body+'</div><div class="rcard-steps"><strong>Action steps</strong>'+steps+'</div><div class="rcard-impact">&#128161; '+rec.impact+'</div></div>';}
+  function makeCard(rec){
+    var id="rch-"+(Math.random().toString(36).substr(2,6));
+    var priCol={critical:"var(--danger)",high:"var(--warn)",medium:"var(--info)",good:"var(--success)"};
+    var col=priCol[rec.priority]||"var(--ink3)";
+    var steps=(rec.steps||[]).map(function(a,i2){return'<div style="display:flex;gap:8px;margin-bottom:5px"><span style="color:var(--accent);font-weight:700;flex-shrink:0;min-width:16px">'+(i2+1)+'.</span><span style="line-height:1.6">'+a+'</span></div>';}).join("");
+    return'<div class="rcard '+rec.priority+'" style="margin-bottom:10px">'+
+      '<div onclick="toggleRecCard(\''+id+'\')" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
+        '<div style="flex:1">'+
+          '<div class="rcard-head" style="margin-bottom:5px"><div class="rcard-title">'+rec.title+'</div>'+
+          '<div class="rcard-meta"><span class="rpill '+rec.priority+'">'+rec.priority.toUpperCase()+'</span>'+
+          '<span class="rcard-kpi">'+rec.kpi+': <strong>'+rec.current+'</strong> → <strong>'+rec.target+'</strong></span></div></div>'+
+          '<div class="rcard-body" style="font-size:12px;color:var(--ink2);line-height:1.7">'+rec.body+'</div>'+
+        '</div>'+
+        '<span id="'+id+'-arr" style="font-size:20px;color:'+col+';flex-shrink:0;margin-top:2px">▸</span>'+
+      '</div>'+
+      '<div id="'+id+'" style="display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:12px">'+
+        '<div class="rcard-steps" style="margin-bottom:10px"><strong style="display:block;color:var(--ink);font-size:11px;margin-bottom:8px">Action steps</strong>'+steps+'</div>'+
+        '<div style="font-size:11px;color:var(--ink3);font-style:italic;padding:8px 12px;background:rgba(255,255,255,0.5);border-radius:6px">💡 '+rec.impact+'</div>'+
+      '</div>'+
+    '</div>';
+  }
   document.getElementById("recsub").textContent=h.company+" -- "+h.period+" (historical)";
   document.getElementById("rect-critical").style.display=critical.length?"block":"none";
   document.getElementById("rect-high").style.display=high.length?"block":"none";
@@ -602,47 +909,952 @@ function loadRecHist(i){
   sw("recommendations");
 }
 
-// //  EXPORT RECS
-function exportRecs(){
-  if(!LRECS||!LRECS.length){alert("No recommendations to export yet.");return;}
-  var wb=XLSX.utils.book_new();
-  var d=[["Priority","KPI","Issue","Current Value","Target","Analysis","Action Steps","Expected Impact"]];
-  LRECS.forEach(function(r){d.push([r.priority.toUpperCase(),r.kpi,r.title,r.current,r.target,r.body,r.steps.join(" | "),r.impact]);});
-  var ws=XLSX.utils.aoa_to_sheet(d);
-  ws["!cols"]=[{wch:12},{wch:22},{wch:40},{wch:14},{wch:14},{wch:60},{wch:80},{wch:50}];
-  XLSX.utils.book_append_sheet(wb,ws,"Recommendations");
-  if(HIST.length){
-    var hd=[["Period","Company","Priority","KPI","Issue","Current","Target","Action Steps"]];
-    HIST.forEach(function(h){if(h.recs)h.recs.forEach(function(r){hd.push([h.period,h.company,r.priority.toUpperCase(),r.kpi,r.title,r.current,r.target,r.steps.join(" | ")]);});});
-    var ws2=XLSX.utils.aoa_to_sheet(hd);ws2["!cols"]=[{wch:16},{wch:20},{wch:12},{wch:22},{wch:40},{wch:14},{wch:14},{wch:80}];
-    XLSX.utils.book_append_sheet(wb,ws2,"Recommendations History");
-  }
-  XLSX.writeFile(wb,"FinIQ_Recommendations_"+LPER+"_"+new Date().toISOString().slice(0,10)+".xlsx");
-}
-
-// //  ANALYSIS ENGINE
+// ── ANALYSIS ENGINE ───────────────────────────────────────────────────────────
 function genInsights(r){
   var b=B[IND],ind=B[IND].name,ins=[];
   function addI(tp,ti,bo,ac){ins.push({type:tp,title:ti,body:bo,action:ac});}
-  if(r.grossMargin!=null){var s=gs(r.grossMargin,b.grossMargin);if(s==="good")addI("good","Gross margin strong at "+r.grossMargin.toFixed(1)+"%","Above the "+ind+" benchmark of "+b.grossMargin.g+"%. Retaining a healthy share of each revenue dollar after product costs.","Maintain pricing discipline and continue monitoring COGS. Explore supplier renegotiation or product mix optimization.");else if(s==="warn")addI("warn","Gross margin "+r.grossMargin.toFixed(1)+"% below target","The "+ind+" target is "+b.grossMargin.g+"%. Not retaining enough from each sale.","Review top products by margin. Raise prices on high-demand items or renegotiate COGS on top-volume products.");else addI("risk","Gross margin critically low at "+r.grossMargin.toFixed(1)+"%","Below the "+ind+" minimum of "+b.grossMargin.o+"%. Not retaining enough revenue to cover operating expenses sustainably.","Immediate action required. Audit all COGS. Raise prices where demand allows. Discontinue lowest-margin products.");}
-  if(r.netMargin!=null){var s2=gs(r.netMargin,b.netMargin);if(s2==="good")addI("good","Net profitability healthy at "+r.netMargin.toFixed(1)+"%","Above the "+ind+" target of "+b.netMargin.g+"%. Converting revenue to profit efficiently.","Reinvest surplus into growth. Monitor operating expense creep as you scale.");else if(s2==="warn")addI("warn","Net margin "+r.netMargin.toFixed(1)+"% needs improvement","Below the "+ind+" target of "+b.netMargin.g+"%. Operating costs consuming too much gross profit.","Categorize and rank every operating expense. Challenge the largest ones. A 10-15% reduction in opex moves net margin significantly.");else addI("risk","Net margin "+r.netMargin.toFixed(1)+"% is critical","Below the "+ind+" minimum. Not generating sustainable profit at current structure.","Zero-based expense audit. Fix profitability before investing in growth.");}
-  if(r.currentRatio!=null){var s3=gs(r.currentRatio,b.currentRatio);if(s3==="bad")addI("risk","Current ratio "+r.currentRatio.toFixed(2)+"x signals liquidity risk","The "+ind+" target is "+b.currentRatio.g+"x. Current assets do not adequately cover current liabilities.","Accelerate receivables. Negotiate extended supplier terms. Build 90-day cash flow forecast. Avoid new short-term debt.");else if(s3==="good")addI("good","Strong liquidity at "+r.currentRatio.toFixed(2)+"x","Above the "+ind+" target. Solid short-term financial health.","Ensure excess current assets are deployed productively not sitting idle.");}
-  if(r.dso!=null){var s5=gs(r.dso,b.dso);if(s5==="bad")addI("risk","Collecting too slowly -- DSO "+Math.round(r.dso)+" days","The "+ind+" target is "+b.dso.g+" days.","Automate reminders at 15 and 25 days. Offer early payment discounts. Tighten terms on late customers.");else addI("good","Excellent DSO of "+Math.round(r.dso)+" days","Well within the "+ind+" benchmark. Cash collecting efficiently.","Maintain current practices.");}
-  if(r.ocfVal!=null){if(r.ocfVal<0)addI("risk","Negative operating cash flow -$"+Math.abs(Math.round(r.ocfVal)).toLocaleString(),"Operations are consuming more cash than they generate.","Address profitability first. No growth investment until OCF turns positive.");else addI("good","Positive operating cash flow $"+Math.round(r.ocfVal).toLocaleString(),"Core business generating real cash. Strong indicator of health.","Deploy surplus OCF strategically: debt reduction, inventory, or growth.");}
-  if(r.negativeEquity)addI("risk","Negative equity -- liabilities exceed assets by $"+Math.abs(Math.round(r.raw.equity)).toLocaleString(),"Total liabilities exceed total assets. Critical flag for lenders.","Stop distributions until equity turns positive. Retain net income inside the business.");
-  if(r.debtAsset!=null&&gs(r.debtAsset,b.debtAsset)==="bad")addI("risk","High leverage -- debt to assets "+r.debtAsset.toFixed(2)+"x","Above "+ind+" acceptable level. Heavy debt relative to asset base.","Do not take on new debt. Prioritize debt reduction. Review all facilities for refinancing opportunities.");
-  if(r.workingCapital!=null){if(r.workingCapital<0)addI("risk","Negative working capital -$"+Math.abs(Math.round(r.workingCapital)).toLocaleString(),"Current liabilities exceed current assets. Short-term solvency risk.","Immediate attention required. Explore emergency line of credit. Accelerate all receivables. Negotiate extended supplier terms.");else if(r.workingCapital>50000)addI("good","Healthy working capital $"+Math.round(r.workingCapital).toLocaleString(),"Good short-term financial cushion for operational needs.","Monitor monthly. Ensure it stays positive through seasonal swings.");}
-  if(ins.length===0)addI("info","Upload detailed QuickBooks exports for deeper analysis","KPIs calculated from available data.","Export the full detailed report from QuickBooks with all rows visible.");
+  if(r.grossMargin!=null){var s=gs(r.grossMargin,b.grossMargin);if(s==="good")addI("good","Gross margin strong at "+r.grossMargin.toFixed(1)+"%","Above "+ind+" benchmark of "+b.grossMargin.g+"%.","Maintain pricing discipline.");else if(s==="warn")addI("warn","Gross margin "+r.grossMargin.toFixed(1)+"% below target","Target is "+b.grossMargin.g+"%.","Raise prices on high-demand items or renegotiate COGS.");else addI("risk","Gross margin critically low at "+r.grossMargin.toFixed(1)+"%","Below minimum "+b.grossMargin.o+"%.","Immediate action required. Audit all COGS.");}
+  if(r.netMargin!=null){var s2=gs(r.netMargin,b.netMargin);if(s2==="good")addI("good","Net profitability healthy at "+r.netMargin.toFixed(1)+"%","Above target.","Reinvest surplus into growth.");else if(s2==="warn")addI("warn","Net margin "+r.netMargin.toFixed(1)+"% needs improvement","Operating costs consuming too much gross profit.","Rank and challenge all operating expenses.");else addI("risk","Net margin "+r.netMargin.toFixed(1)+"% is critical","Below minimum.","Zero-based expense audit.");}
+  if(r.currentRatio!=null&&gs(r.currentRatio,b.currentRatio)==="bad")addI("risk","Current ratio "+r.currentRatio.toFixed(2)+"x signals liquidity risk","Target "+b.currentRatio.g+"x.","Accelerate receivables. Negotiate extended supplier terms. Build cash flow forecast.");
+  if(r.dso!=null&&gs(r.dso,b.dso)==="bad")addI("risk","Collecting too slowly -- DSO "+Math.round(r.dso)+" days","Target "+b.dso.g+" days.","Automate reminders. Offer early payment discounts.");
+  if(r.ocfVal!=null){if(r.ocfVal<0)addI("risk","Negative operating cash flow -$"+Math.abs(Math.round(r.ocfVal)).toLocaleString(),"Operations consuming cash.","Address profitability first.");else addI("good","Positive operating cash flow $"+Math.round(r.ocfVal).toLocaleString(),"Core business generating cash.","Deploy surplus OCF strategically.");}
+  if(r.negativeEquity)addI("risk","Negative equity -- liabilities exceed assets","Critical flag for lenders.","Stop distributions. Retain net income.");
+  if(r.debtAsset!=null&&gs(r.debtAsset,b.debtAsset)==="bad")addI("risk","High leverage -- debt to assets "+r.debtAsset.toFixed(2)+"x","Above acceptable level.","Do not take on new debt. Prioritize reduction.");
+  if(r.workingCapital!=null&&r.workingCapital<0)addI("risk","Negative working capital -$"+Math.abs(Math.round(r.workingCapital)).toLocaleString(),"Current liabilities exceed current assets.","Immediate attention. Explore emergency credit line.");
+  if(ins.length===0)addI("info","Upload detailed QuickBooks exports for deeper analysis","KPIs calculated from available data.","Export the full detailed report from QuickBooks.");
   return ins;
 }
 
-// //  HISTORY
-function kpiRows(r,ind){var b=B[ind];return[["Gross Margin (%)",r.grossMargin!=null?+r.grossMargin.toFixed(1):null,b.grossMargin.g,b.grossMargin.o,gs(r.grossMargin,b.grossMargin)],["Net Profit Margin (%)",r.netMargin!=null?+r.netMargin.toFixed(1):null,b.netMargin.g,b.netMargin.o,gs(r.netMargin,b.netMargin)],["Operating Margin (%)",r.opMargin!=null?+r.opMargin.toFixed(1):null,b.opMargin.g,b.opMargin.o,gs(r.opMargin,b.opMargin)],["EBITDA Margin (%)",r.ebitdaMargin!=null?+r.ebitdaMargin.toFixed(1):null,b.ebitdaMargin.g,b.ebitdaMargin.o,gs(r.ebitdaMargin,b.ebitdaMargin)],["ROE (%)",r.roe!=null?+r.roe.toFixed(1):null,b.roe.g,b.roe.o,gs(r.roe,b.roe)],["ROA (%)",r.roa!=null?+r.roa.toFixed(1):null,b.roa.g,b.roa.o,gs(r.roa,b.roa)],["ROI (%)",r.roi!=null?+r.roi.toFixed(1):null,b.roi.g,b.roi.o,gs(r.roi,b.roi)],["Contribution Margin (%)",r.contributionMargin!=null?+r.contributionMargin.toFixed(1):null,b.contributionMargin.g,b.contributionMargin.o,gs(r.contributionMargin,b.contributionMargin)],["Current Ratio",r.currentRatio!=null?+r.currentRatio.toFixed(2):null,b.currentRatio.g,b.currentRatio.o,gs(r.currentRatio,b.currentRatio)],["Quick Ratio",r.quickRatio!=null?+r.quickRatio.toFixed(2):null,b.quickRatio.g,b.quickRatio.o,gs(r.quickRatio,b.quickRatio)],["Working Capital ($)",r.workingCapital!=null?Math.round(r.workingCapital):null,null,null,r.workingCapital!=null?r.workingCapital>=0?"good":"bad":"na"],["Operating Cash Flow ($)",r.ocfVal!=null?Math.round(r.ocfVal):null,null,null,r.ocfVal!=null?r.ocfVal>=0?"good":"bad":"na"],["Free Cash Flow ($)",r.freeCashFlow!=null?Math.round(r.freeCashFlow):null,null,null,r.freeCashFlow!=null?r.freeCashFlow>=0?"good":"bad":"na"],["Days Sales Outstanding",r.dso!=null?Math.round(r.dso):null,b.dso.g,b.dso.o,gs(r.dso,b.dso)],["Inventory Turnover (x/yr)",r.inventoryTurnover!=null?+r.inventoryTurnover.toFixed(1):null,b.inventoryTurnover.g,b.inventoryTurnover.o,gs(r.inventoryTurnover,b.inventoryTurnover)],["Total Asset Turnover",r.totalAssetTurnover!=null?+r.totalAssetTurnover.toFixed(2):null,b.totalAssetTurnover.g,b.totalAssetTurnover.o,gs(r.totalAssetTurnover,b.totalAssetTurnover)],["Sales per Employee ($)",r.salesPerEmployee!=null?Math.round(r.salesPerEmployee):null,b.salesPerEmployee.g,b.salesPerEmployee.o,gs(r.salesPerEmployee,b.salesPerEmployee)],["Debt to Equity",r.debtEquity!=null?+r.debtEquity.toFixed(2):null,b.debtEquity.g,b.debtEquity.o,gs(r.debtEquity,b.debtEquity)],["Debt to Assets",r.debtAsset!=null?+r.debtAsset.toFixed(2):null,b.debtAsset.g,b.debtAsset.o,gs(r.debtAsset,b.debtAsset)],["Break-even Sales ($)",r.breakevenSales!=null?Math.round(r.breakevenSales):null,null,null,"na"],["Break-even % of Revenue",r.breakevenPct!=null?+r.breakevenPct.toFixed(1):null,b.breakevenPct.g,b.breakevenPct.o,gs(r.breakevenPct,b.breakevenPct)]];}
+// ── COMPARISON ENGINE ─────────────────────────────────────────────────────────
+var CMP_KPIS=[
+  {key:"revenue",label:"Revenue",t:"usd",better:"up",section:"Revenue"},
+  {key:"grossMargin",label:"Gross Margin",t:"pct",better:"up",section:"Profitability"},
+  {key:"netMargin",label:"Net Profit Margin",t:"pct",better:"up",section:"Profitability"},
+  {key:"opMargin",label:"Operating Margin",t:"pct",better:"up",section:"Profitability"},
+  {key:"ebitdaMargin",label:"EBITDA Margin",t:"pct",better:"up",section:"Profitability"},
+  {key:"roe",label:"Return on Equity",t:"pct",better:"up",section:"Profitability"},
+  {key:"roa",label:"Return on Assets",t:"pct",better:"up",section:"Profitability"},
+  {key:"contributionMargin",label:"Contribution Margin",t:"pct",better:"up",section:"Profitability"},
+  {key:"currentRatio",label:"Current Ratio",t:"ratio",better:"up",section:"Liquidity"},
+  {key:"quickRatio",label:"Quick Ratio",t:"ratio",better:"up",section:"Liquidity"},
+  {key:"workingCapital",label:"Working Capital",t:"usd",better:"up",section:"Liquidity"},
+  {key:"ocfVal",label:"Operating Cash Flow",t:"usd",better:"up",section:"Liquidity"},
+  {key:"freeCashFlow",label:"Free Cash Flow",t:"usd",better:"up",section:"Liquidity"},
+  {key:"dso",label:"Days Sales Outstanding",t:"days",better:"down",section:"Efficiency"},
+  {key:"inventoryTurnover",label:"Inventory Turnover",t:"turns",better:"up",section:"Efficiency"},
+  {key:"totalAssetTurnover",label:"Total Asset Turnover",t:"ratio",better:"up",section:"Efficiency"},
+  {key:"salesPerEmployee",label:"Sales per Employee",t:"usd",better:"up",section:"Efficiency"},
+  {key:"debtEquity",label:"Debt to Equity",t:"ratio",better:"down",section:"Leverage"},
+  {key:"debtAsset",label:"Debt to Assets",t:"ratio",better:"down",section:"Leverage"},
+  {key:"breakevenPct",label:"Break-even % of Revenue",t:"pct",better:"down",section:"Break-even"},
+];
+
+function getKPIVal(r,key){
+  if(key==="revenue")return r.raw&&r.raw.revenue?r.raw.revenue:null;
+  return r[key]!=null?r[key]:null;
+}
+
+function cmpDirection(diff,better){
+  if(Math.abs(diff)<0.001)return"flat";
+  if(better==="up")return diff>0?"improved":"declined";
+  return diff<0?"improved":"declined";
+}
+
+function renderComparison(rA,rB,labelA,labelB){
+  CMPR={a:rA,b:rB,labelA:labelA,labelB:labelB,recs:{decl:[],newIssue:[],resolved:[],impr:[]}};
+  var b=B[IND];
+  var scoreA=calcScore(rA),scoreB=calcScore(rB);
+  var colA=scoreA>=70?"#0a7c4a":scoreA>=45?"#b45309":"#c0392b";
+  var colB=scoreB>=70?"#0a7c4a":scoreB>=45?"#b45309":"#c0392b";
+  var lblA=scoreA>=70?"Financially Healthy":scoreA>=45?"Needs Attention":"At Risk";
+  var lblB=scoreB>=70?"Financially Healthy":scoreB>=45?"Needs Attention":"At Risk";
+  var scoreDiff=scoreB-scoreA;
+  var scoreDir=scoreDiff>0?"&#9650; +"+scoreDiff+" pts":scoreDiff<0?"&#9660; "+scoreDiff+" pts":"&#8212; No change";
+  var scoreColor=scoreDiff>0?"var(--success)":scoreDiff<0?"var(--danger)":"var(--ink3)";
+
+  // Score cards
+  document.getElementById("cmp-score-cards").innerHTML=
+    '<div class="cmp-score-card a"><div class="cmp-score-num" style="color:'+colA+'">'+scoreA+'</div><div class="cmp-score-info"><div class="period-lbl" style="color:#1a56db">'+labelA+'</div><div class="score-lbl" style="color:'+colA+'">'+lblA+'</div><div class="score-sub">Health score / 100</div></div></div>'+
+    '<div class="cmp-score-card b"><div class="cmp-score-num" style="color:'+colB+'">'+scoreB+'</div><div class="cmp-score-info"><div class="period-lbl" style="color:#b45309">'+labelB+'</div><div class="score-lbl" style="color:'+colB+'">'+lblB+'</div><div class="score-sub">Change: <strong style="color:'+scoreColor+'">'+scoreDir+'</strong></div></div></div>';
+
+  // Summary pills
+  var improved=0,declined=0,flat=0;
+  CMP_KPIS.forEach(function(k){
+    var vA=getKPIVal(rA,k.key),vB=getKPIVal(rB,k.key);
+    if(vA==null||vB==null)return;
+    var dir=cmpDirection(vB-vA,k.better);
+    if(dir==="improved")improved++;else if(dir==="declined")declined++;else flat++;
+  });
+  document.getElementById("cmp-summary-pills").innerHTML=
+    '<span class="cmp-pill improved">&#9650; '+improved+' improved</span>'+
+    '<span class="cmp-pill declined">&#9660; '+declined+' declined</span>'+
+    '<span class="cmp-pill flat">&#8212; '+flat+' unchanged</span>';
+
+  // Update table headers
+  document.getElementById("cmp-th-a").textContent=labelA;
+  document.getElementById("cmp-th-b").textContent=labelB;
+
+  // KPI table
+  var currentSection="";
+  var tbody="";
+  CMP_KPIS.forEach(function(k){
+    var vA=getKPIVal(rA,k.key),vB=getKPIVal(rB,k.key);
+    if(vA==null&&vB==null)return;
+    if(k.section!==currentSection){
+      currentSection=k.section;
+      tbody+='<tr style="background:var(--bg)"><td colspan="6" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);padding:8px 10px">'+k.section+'</td></tr>';
+    }
+    var diff=(vA!=null&&vB!=null)?vB-vA:null;
+    var dir=diff!=null?cmpDirection(diff,k.better):"flat";
+    var deltaStr="N/A";
+    var deltaCls="flat";
+    if(diff!=null){
+      var sign=diff>=0?"+":"";
+      if(k.t==="pct")deltaStr=sign+diff.toFixed(1)+"pp";
+      else if(k.t==="ratio")deltaStr=sign+diff.toFixed(2)+"x";
+      else if(k.t==="turns")deltaStr=sign+diff.toFixed(1)+"x";
+      else if(k.t==="days")deltaStr=sign+Math.round(diff)+" d";
+      else if(k.t==="usd")deltaStr=sign+"$"+Math.abs(Math.round(diff)).toLocaleString();
+      deltaCls=dir==="improved"?"up":dir==="declined"?"dn":"flat";
+    }
+    var statusB=vB!=null?gs(vB,b[k.key]):null;
+    var statusBHtml=statusB&&statusB!=="na"?'<span class="sdot '+statusB+'"></span>'+sl(statusB):'<span style="color:var(--ink3)">N/A</span>';
+    var dirBadge=dir==="improved"
+      ?'<span class="delta-badge improved"><span style="font-size:13px;line-height:1">↑</span> Improved</span>'
+      :dir==="declined"
+      ?'<span class="delta-badge declined"><span style="font-size:13px;line-height:1">↓</span> Declined</span>'
+      :'<span class="delta-badge flat">— Flat</span>';
+    tbody+='<tr>'+
+      '<td class="cmp-kpi-name">'+k.label+'</td>'+
+      '<td class="r cmp-val-a">'+fmt(vA,k.t)+'</td>'+
+      '<td class="r cmp-val-b">'+fmt(vB,k.t)+'</td>'+
+      '<td class="r"><span class="cmp-delta '+deltaCls+'">'+deltaStr+'</span></td>'+
+      '<td>'+dirBadge+'</td>'+
+      '<td>'+statusBHtml+'</td>'+
+    '</tr>';
+  });
+  document.getElementById("cmp-tbody").innerHTML=tbody;
+
+  // Change-based recommendations
+  var decl=[],newIssue=[],resolved=[],impr=[];
+  CMP_KPIS.forEach(function(k){
+    var vA=getKPIVal(rA,k.key),vB=getKPIVal(rB,k.key);
+    if(vA==null||vB==null)return;
+    var diff=vB-vA;
+    var dir=cmpDirection(diff,k.better);
+    if(dir==="flat")return;
+    var bk=b[k.key];
+    var sA=bk?gs(vA,bk):"na",sB=bk?gs(vB,bk):"na";
+    var pctChange=vA!==0?((diff/Math.abs(vA))*100).toFixed(1):"N/A";
+    var sign=diff>=0?"+":"";
+    var deltaLabel;
+    if(k.t==="pct")deltaLabel=sign+diff.toFixed(1)+" pp";
+    else if(k.t==="usd")deltaLabel=(diff>=0?"+":"-")+"$"+Math.abs(Math.round(diff)).toLocaleString();
+    else if(k.t==="days")deltaLabel=sign+Math.round(diff)+" days";
+    else deltaLabel=sign+diff.toFixed(2);
+
+    if(dir==="declined"){
+      var priority=Math.abs(diff/Math.max(Math.abs(vA),0.001));
+      var newlyBad=sA!=="bad"&&sB==="bad";
+      var cat=newlyBad?"new-issue":"declined";
+      var rec={kpi:k.label,dir:dir,cat:cat,vA:vA,vB:vB,delta:deltaLabel,pct:pctChange,t:k.t,better:k.better,sA:sA,sB:sB,priority:priority};
+      if(cat==="new-issue")newIssue.push(rec);else decl.push(rec);
+    } else if(dir==="improved"){
+      var wasProblematic=sA==="bad"||sA==="warn";
+      var nowGood=sB==="good";
+      if(wasProblematic&&nowGood)resolved.push({kpi:k.label,dir:dir,cat:"resolved",vA:vA,vB:vB,delta:deltaLabel,pct:pctChange,t:k.t,better:k.better,sA:sA,sB:sB});
+      else impr.push({kpi:k.label,dir:dir,cat:"improved",vA:vA,vB:vB,delta:deltaLabel,pct:pctChange,t:k.t,better:k.better,sA:sA,sB:sB});
+    }
+  });
+  // Sort declines by severity
+  decl.sort(function(a,b2){return b2.priority-a.priority;});
+  // Save to CMPR so PDF export can access them
+  CMPR.recs={decl:decl,newIssue:newIssue,resolved:resolved,impr:impr};
+
+  var _cmpCardId=0;
+  function makeChangeCard(rec,lA,lB){
+    var advice=getCmpAdvice(rec,lA,lB);
+    var id="crec-"+(++_cmpCardId);
+    var accentCol=rec.dir==="improved"?"var(--success)":"var(--danger)";
+    var steps=advice.steps.map(function(s,i){
+      return'<div style="display:flex;gap:8px;margin-bottom:5px">'+
+        '<span style="color:var(--accent);font-weight:700;flex-shrink:0;min-width:16px">'+(i+1)+'.</span>'+
+        '<span>'+s+'</span>'+
+      '</div>';
+    }).join("");
+    return'<div class="crec-card '+rec.cat+'" style="margin-bottom:10px">'+
+      // ── Clickable header ──
+      '<div onclick="toggleCmpCard(\''+id+'\')" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:2px 0 6px">'+
+        '<div style="flex:1">'+
+          '<div class="crec-head" style="margin-bottom:6px">'+
+            '<span class="crec-badge '+rec.cat+'">'+rec.cat.replace(/-/g," ").toUpperCase()+'</span>'+
+            '<span class="crec-title">'+rec.kpi+'</span>'+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--ink2)">'+
+            '<strong>'+lA+':</strong> '+fmt(rec.vA,rec.t)+
+            ' <span style="color:var(--ink3)">→</span> '+
+            '<strong>'+lB+':</strong> '+fmt(rec.vB,rec.t)+
+            ' <span style="font-weight:700;color:'+accentCol+'"> '+rec.delta+'</span>'+
+            (rec.pct!=="N/A"?' <span style="color:var(--ink3);font-size:11px">('+rec.pct+'%)</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<span id="'+id+'-arrow" style="font-size:18px;color:var(--ink3);flex-shrink:0;margin-top:2px;transition:transform .2s">▸</span>'+
+      '</div>'+
+      // ── Expandable body ──
+      '<div id="'+id+'" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">'+
+        '<div style="font-size:12px;color:var(--ink3);line-height:1.7;margin-bottom:10px">'+advice.context+'</div>'+
+        '<div class="crec-steps">'+
+          '<strong style="display:block;color:var(--ink);font-size:11px;margin-bottom:8px">Action steps for '+lB+'</strong>'+
+          steps+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }
+
+  document.getElementById("crect-declined").style.display=decl.length?"block":"none";
+  document.getElementById("crect-new-issue").style.display=newIssue.length?"block":"none";
+  document.getElementById("crect-resolved").style.display=resolved.length?"block":"none";
+  document.getElementById("crect-improved").style.display=impr.length?"block":"none";
+  document.getElementById("crec-declined").innerHTML=decl.map(function(r){return makeChangeCard(r,labelA,labelB);}).join("");
+  document.getElementById("crec-new-issue").innerHTML=newIssue.map(function(r){return makeChangeCard(r,labelA,labelB);}).join("");
+  document.getElementById("crec-resolved").innerHTML=resolved.map(function(r){return makeChangeCard(r,labelA,labelB);}).join("");
+  document.getElementById("crec-improved").innerHTML=impr.map(function(r){return makeChangeCard(r,labelA,labelB);}).join("");
+
+  document.getElementById("cmp-results").style.display="block";
+  document.getElementById("cmp-export-btn").style.display="inline-block";
+  document.getElementById("cmp-results").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function toggleCmpCard(id){
+  var el=document.getElementById(id);
+  var arrow=document.getElementById(id+"-arrow");
+  if(!el)return;
+  var open=el.style.display==="block";
+  el.style.display=open?"none":"block";
+  if(arrow)arrow.style.transform=open?"":"rotate(90deg)";
+}
+
+function toggleRecCard(id){
+  var el=document.getElementById(id);
+  var arrow=document.getElementById(id+"-arr");
+  if(!el)return;
+  var open=el.style.display==="block";
+  el.style.display=open?"none":"block";
+  if(arrow)arrow.textContent=open?"▸":"▾";
+}
+
+// Context-aware advice for each KPI change
+function getCmpAdvice(rec,lA,lB){
+  var b=B[IND];
+  var advice={context:"",steps:[]};
+  var k=rec.kpi,vA=rec.vA,vB=rec.vB,dir=rec.dir,t=rec.t;
+  if(k==="Gross Margin"){
+    if(dir==="declined"){advice.context="Gross margin fell "+Math.abs(parseFloat(rec.delta))+"pp from "+lA+" to "+lB+". This means you're keeping less from each sale — typically caused by rising COGS, discounting, or a product mix shift toward lower-margin items.";advice.steps=["Compare COGS line items between the two periods to find what increased.","Check if any new discounts or promotions ran in "+lB+" that weren't in "+lA+".","Review product mix — did a lower-margin product represent a bigger share of sales?","Renegotiate top 3 suppliers or adjust pricing before the next period."];}
+    else{advice.context="Gross margin improved "+rec.delta+" from "+lA+" to "+lB+". Something is working — protect it.";advice.steps=["Identify exactly what drove this (price increase, supplier deal, mix shift).","Document it and make it repeatable.","Do not undo any pricing changes that contributed to this."];}
+  } else if(k==="Net Profit Margin"){
+    if(dir==="declined"){advice.context="Net margin compressed from "+fmt(vA,"pct")+" to "+fmt(vB,"pct")+". This is often a sign that operating costs grew faster than revenue, or one-time expenses hit in "+lB+".";advice.steps=["Build a side-by-side operating expense comparison between the two periods.","Identify any one-time or new expense categories that appeared in "+lB+".","Check whether headcount or contractor costs increased.","Set a target to return net margin to "+fmt(vA,"pct")+" within 2 periods."];}
+    else{advice.context="Net margin improved significantly from "+fmt(vA,"pct")+" to "+fmt(vB,"pct")+".";advice.steps=["Identify what expense line(s) reduced or what revenue line grew.","Embed these efficiencies into your standard operating model.","Reinvest a portion of the improvement into growth rather than distributions."];}
+  } else if(k==="Revenue"){
+    if(dir==="declined"){advice.context="Revenue declined from "+fmt(vA,"usd")+" to "+fmt(vB,"usd")+". Before drawing conclusions, confirm whether this is seasonal or structural.";advice.steps=["Compare the same period from the prior year if available.","Break revenue down by channel, product, or customer segment to find the driver.","Check whether any customers churned or large orders didn't recur.","Review marketing spend — did it drop in "+lB+"?"];}
+    else{advice.context="Revenue grew from "+fmt(vA,"usd")+" to "+fmt(vB,"usd")+". Positive momentum.";advice.steps=["Identify the top contributing channels or products and double down.","Ensure gross margin held as revenue grew — growth that erodes margin is not healthy.","Check that cash flow grew proportionally to revenue."];}
+  } else if(k==="Current Ratio"){
+    if(dir==="declined"){advice.context="Liquidity weakened from "+fmt(vA,"ratio")+" to "+fmt(vB,"ratio")+". Current liabilities may have grown faster than current assets.";advice.steps=["Identify whether this is driven by new short-term debt, AP growth, or a drop in cash.","Accelerate any outstanding receivables.","Avoid drawing on revolving credit if not already.","Build a 13-week cash flow forecast immediately."];}
+    else{advice.context="Liquidity improved from "+fmt(vA,"ratio")+" to "+fmt(vB,"ratio")+". Good progress.";advice.steps=["Confirm whether this improvement came from cash growth or liability reduction.","Maintain this level as a floor — do not let it slip below "+fmt(vA,"ratio")+" again."];}
+  } else if(k==="Days Sales Outstanding"){
+    if(dir==="declined"){advice.context="DSO improved (fell) from "+fmt(vA,"days")+" to "+fmt(vB,"days")+". Collecting faster.";advice.steps=["Document what changed — did you introduce reminders, tighten terms, or change customer mix?","Make this the new standard and protect it."];}
+    else{advice.context="DSO worsened (rose) from "+fmt(vA,"days")+" to "+fmt(vB,"days")+". Slower collections are tying up cash.";advice.steps=["Review which customers are paying slower in "+lB+" vs "+lA+".","Send overdue reminders and introduce 15/25-day automated follow-ups.","Add a 1-2% early payment discount for invoices paid within 10 days.","Consider requiring deposits on future large orders."];}
+  } else if(k==="Inventory Turnover"){
+    if(dir==="declined"){advice.context="Inventory turning slower — from "+fmt(vA,"turns")+" to "+fmt(vB,"turns")+". More capital is being tied up in stock.";advice.steps=["Run a SKU-by-SKU comparison of days-on-hand between the two periods.","Identify which SKUs drove the slowdown and reduce reorder quantities.","Stop purchasing for SKUs with more than 60 days of stock.","Consider a targeted markdown campaign on slow movers."];}
+    else{advice.context="Inventory efficiency improved from "+fmt(vA,"turns")+" to "+fmt(vB,"turns")+".";advice.steps=["Confirm you are not running too lean on your top sellers.","Document the buying or forecasting changes that drove this improvement."];}
+  } else if(k==="Debt to Assets"||k==="Debt to Equity"){
+    if(dir==="declined"){advice.context=k+" improved (fell) from "+fmt(vA,t)+" to "+fmt(vB,t)+". Less leveraged.";advice.steps=["Continue the debt reduction trajectory.","Do not take on new debt unless ROI is clearly positive."];}
+    else{advice.context=k+" worsened (rose) from "+fmt(vA,t)+" to "+fmt(vB,t)+". More leveraged.";advice.steps=["Identify what new debt was taken on in "+lB+".","Build a plan to reduce leverage within 2-3 periods.","Ensure debt service is covered by operating cash flow with margin."];}
+  } else if(k==="Operating Cash Flow"||k==="Free Cash Flow"){
+    if(dir==="declined"){advice.context=k+" fell from "+fmt(vA,"usd")+" to "+fmt(vB,"usd")+". Less cash generated from operations.";advice.steps=["Review working capital changes — AR, AP, inventory between periods.","Check for one-time cash outflows in "+lB+".","If OCF is now negative, address immediately before growth spending."];}
+    else{advice.context=k+" improved from "+fmt(vA,"usd")+" to "+fmt(vB,"usd")+". Strong.";advice.steps=["Identify whether improvement came from profit growth or working capital optimization.","Deploy surplus cash strategically — debt reduction, inventory efficiency, or reserve building."];}
+  } else {
+    // Generic fallback
+    if(dir==="declined"){advice.context=k+" declined from "+fmt(vA,t)+" to "+fmt(vB,t)+".";advice.steps=["Investigate the root cause in your "+lB+" financials.","Compare this metric's drivers (revenue, costs, assets) line by line between periods.","Set a specific recovery target for the next period."];}
+    else{advice.context=k+" improved from "+fmt(vA,t)+" to "+fmt(vB,t)+".";advice.steps=["Document what changed between "+lA+" and "+lB+".","Ensure this improvement is sustainable and not a one-time event."];}
+  }
+  return advice;
+}
+
+// ── COMPARISON: FROM HISTORY ──────────────────────────────────────────────────
+function populateCmpSelects(){
+  if(!HIST.length){document.getElementById("cmp-hist-section").style.display="none";document.getElementById("cmp-or").style.display="none";return;}
+  document.getElementById("cmp-hist-section").style.display="block";
+  document.getElementById("cmp-or").style.display="flex";
+  var opts=HIST.map(function(h,i){return'<option value="'+i+'">'+h.period+' — '+h.company+'</option>';}).join("");
+  document.getElementById("cmp-sel-a").innerHTML='<option value="">— select Period A —</option>'+opts;
+  document.getElementById("cmp-sel-b").innerHTML='<option value="">— select Period B —</option>'+opts;
+  if(HIST.length>=2){document.getElementById("cmp-sel-a").value="1";document.getElementById("cmp-sel-b").value="0";}
+}
+
+function runFromHistory(){
+  var ia=parseInt(document.getElementById("cmp-sel-a").value);
+  var ib=parseInt(document.getElementById("cmp-sel-b").value);
+  if(isNaN(ia)||isNaN(ib)){document.getElementById("cmperr").innerHTML='<div class="errmsg">Please select both periods.</div>';return;}
+  if(ia===ib){document.getElementById("cmperr").innerHTML='<div class="errmsg">Please select two different periods.</div>';return;}
+  document.getElementById("cmperr").innerHTML="";
+  var hA=HIST[ia],hB=HIST[ib];
+  renderComparison(hA.kpis,hB.kpis,hA.period+" ("+hA.company+")",hB.period+" ("+hB.company+")");
+}
+
+function runComparison(){
+  var lA=(document.getElementById("cmp-label-a").value||"Period A").trim();
+  var lB=(document.getElementById("cmp-label-b").value||"Period B").trim();
+  var empA=parseInt(document.getElementById("cmp-emp-a").value)||1;
+  var empB=parseInt(document.getElementById("cmp-emp-b").value)||1;
+  if(!CFD.a.pl&&!CFD.a.bs){document.getElementById("cmperr").innerHTML='<div class="errmsg">Please upload at least the P&L and Balance Sheet for Period A.</div>';return;}
+  if(!CFD.b.pl&&!CFD.b.bs){document.getElementById("cmperr").innerHTML='<div class="errmsg">Please upload at least the P&L and Balance Sheet for Period B.</div>';return;}
+  document.getElementById("cmperr").innerHTML="";
+  var btn=document.getElementById("cmp-runbtn");
+  btn.disabled=true;btn.textContent="Calculating...";
+  setTimeout(function(){
+    try{
+      var rA=calcKPIs(CFD.a.pl,CFD.a.bs,CFD.a.cf,empA);
+      var rB=calcKPIs(CFD.b.pl,CFD.b.bs,CFD.b.cf,empB);
+      renderComparison(rA,rB,lA,lB);
+    }catch(e){document.getElementById("cmperr").innerHTML='<div class="errmsg">Error: '+e.message+'</div>';}
+    btn.disabled=false;btn.textContent="Run Comparison & Generate Report";
+  },100);
+}
+
+function resetComparison(){
+  document.getElementById("cmp-results").style.display="none";
+  document.getElementById("cmp-export-btn").style.display="none";
+  CFD={a:{pl:null,bs:null,cf:null},b:{pl:null,bs:null,cf:null}};
+  ["a","b"].forEach(function(p){["pl","bs","cf"].forEach(function(t){var c=document.getElementById("ccard-"+t+"-"+p);var s=document.getElementById("cust-"+t+"-"+p);if(c){c.classList.remove("done","errc");}if(s)s.textContent="Upload";});});
+  document.getElementById("cmp-label-a").value="";document.getElementById("cmp-label-b").value="";
+  document.getElementById("cmperr").innerHTML="";
+}
+
+// ── EXPORT COMPARISON ─────────────────────────────────────────────────────────
+function exportComparison(){
+  if(!CMPR.a||!CMPR.b){alert("No comparison data to export yet.");return;}
+  var wb=XLSX.utils.book_new();
+  var scoreA=calcScore(CMPR.a),scoreB=calcScore(CMPR.b);
+  var b=B[IND];
+  // Build data rows
+  var rows=[["Modonix LLC — FinIQ Financial Intelligence"],["Prepared by Modonix LLC  |  Confidential"],[""],["FinIQ — Period Comparison"],[""],["",CMPR.labelA,CMPR.labelB,"Change","% Change","Direction","Status in "+CMPR.labelB]];
+  var lastSec="";
+  CMP_KPIS.forEach(function(k){
+    var vA=getKPIVal(CMPR.a,k.key),vB=getKPIVal(CMPR.b,k.key);
+    if(vA==null&&vB==null)return;
+    if(k.section!==lastSec){lastSec=k.section;rows.push(["— "+k.section+" —","","","","","",""]);}
+    var diff=vA!=null&&vB!=null?vB-vA:null;
+    var pct=diff!=null&&vA!==0?(diff/Math.abs(vA)*100).toFixed(1)+"%":"N/A";
+    var dir=diff!=null?cmpDirection(diff,k.better):"N/A";
+    var sB=vB!=null&&b[k.key]?gs(vB,b[k.key]):"N/A";
+    rows.push([k.label,vA!=null?vA:null,vB!=null?vB:null,diff!=null?+diff.toFixed(3):null,pct,dir.toUpperCase(),sl(sB)]);
+  });
+  rows.push([""],["Health Score",scoreA,scoreB,scoreB-scoreA,"",scoreB>scoreA?"IMPROVED":scoreB<scoreA?"DECLINED":"FLAT",""]);
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  // Column widths
+  ws["!cols"]=[{wch:30},{wch:18},{wch:18},{wch:14},{wch:12},{wch:14},{wch:22}];
+  // Color the header row (row index 2)
+  var range=XLSX.utils.decode_range(ws["!ref"]);
+  for(var C=range.s.c;C<=range.e.c;C++){
+    var hAddr=XLSX.utils.encode_cell({r:2,c:C});
+    if(!ws[hAddr])ws[hAddr]={t:"s",v:""};
+    ws[hAddr].s={fill:{fgColor:{rgb:"0F1117"}},font:{color:{rgb:"FFFFFF"},bold:true}};
+  }
+  // Color data rows by direction
+  rows.forEach(function(row,ri){
+    if(ri<3)return;
+    var dir=row[5];
+    if(!dir)return;
+    var fillRgb=dir==="IMPROVED"?"E6F4ED":dir==="DECLINED"?"FDECEA":null;
+    if(!fillRgb)return;
+    for(var C=0;C<=6;C++){
+      var addr=XLSX.utils.encode_cell({r:ri,c:C});
+      if(!ws[addr])ws[addr]={t:"s",v:""};
+      ws[addr].s={fill:{fgColor:{rgb:fillRgb}}};
+    }
+  });
+  XLSX.utils.book_append_sheet(wb,ws,"KPI Comparison");
+  XLSX.writeFile(wb,"Modonix_FinIQ_Comparison_"+CMPR.labelA.replace(/\s/g,"_")+"_vs_"+CMPR.labelB.replace(/\s/g,"_")+".xlsx");
+}
+
+// ── EXPORT RECS ───────────────────────────────────────────────────────────────
+function exportRecs(){
+  if(!LRECS||!LRECS.length){alert("No recommendations to export yet.");return;}
+  var wb=XLSX.utils.book_new();
+  var d=[["Modonix LLC — FinIQ Financial Intelligence"],["Prepared by Modonix LLC  |  Confidential"],[""],["Priority","KPI","Issue","Current Value","Target","Analysis","Action Steps","Expected Impact"]];
+  LRECS.forEach(function(r){d.push([r.priority.toUpperCase(),r.kpi,r.title,r.current,r.target,r.body,r.steps.join(" | "),r.impact]);});
+  var ws=XLSX.utils.aoa_to_sheet(d);ws["!cols"]=[{wch:12},{wch:22},{wch:40},{wch:14},{wch:14},{wch:60},{wch:80},{wch:50}];
+  XLSX.utils.book_append_sheet(wb,ws,"Recommendations");
+  XLSX.writeFile(wb,"Modonix_FinIQ_Recommendations_"+LPER+".xlsx");
+}
+
+// ── SAVE COMPARISON TO HISTORY ────────────────────────────────────────────────
+function saveComparisonToHistory(){
+  if(!CMPR.a||!CMPR.b){alert("No comparison to save yet.");return;}
+  var scoreA=calcScore(CMPR.a),scoreB=calcScore(CMPR.b);
+  var rec={
+    id:Date.now(),
+    type:"comparison",
+    company:CMPR.labelA+" vs "+CMPR.labelB,
+    period:CMPR.labelA+" vs "+CMPR.labelB,
+    industry:IND,
+    labelA:CMPR.labelA,
+    labelB:CMPR.labelB,
+    kpisA:CMPR.a,
+    kpisB:CMPR.b,
+    scoreA:scoreA,
+    scoreB:scoreB,
+    savedAt:new Date().toLocaleDateString(),
+    // also store as kpis pointing to B so it shows in history list
+    kpis:CMPR.b
+  };
+  HIST.unshift(rec);
+  if(HIST.length>60)HIST=HIST.slice(0,60);
+  try{localStorage.setItem("finiq_h",JSON.stringify(HIST));}catch(e){}
+  var btn=document.getElementById("cmp-save-btn");
+  btn.textContent="Saved ✓";btn.style.background="#0a7c4a";btn.disabled=true;
+  setTimeout(function(){btn.textContent="Save to History";btn.disabled=false;},2500);
+}
+
+// ── PDF HELPERS ───────────────────────────────────────────────────────────────
+function pdfInit(JsPDF,title,subtitle){
+  var doc=new JsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  var W=210,ml=14,mr=14,usable=W-ml-mr;
+  doc.setFillColor(15,17,23);
+  doc.rect(0,0,W,18,"F");
+  doc.setFillColor(26,92,255);
+  doc.rect(0,18,W,1,"F");
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(9);
+  doc.setTextColor(255,255,255);
+  doc.text("Modonix LLC  |  FinIQ Financial Intelligence",ml,12);
+  doc.setFont("helvetica","normal");
+  doc.setTextColor(150,160,180);
+  doc.text(new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}),W-mr,12,{align:"right"});
+  var y=26;
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(16);
+  doc.setTextColor(15,17,23);
+  doc.text(title,ml,y);y+=7;
+  if(subtitle){
+    doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(120,125,133);
+    var subLines=doc.splitTextToSize(String(subtitle),usable);
+    subLines.forEach(function(sl){doc.text(String(sl),ml,y);y+=5;});
+  }
+  doc.setDrawColor(220,220,218);doc.setLineWidth(0.3);doc.line(ml,y,W-mr,y);y+=5;
+  return{doc,W,ml,mr,usable,y:function(){return y;},setY:function(v){y=v;},addY:function(v){y+=v;}};
+}
+function pdfCheckPage(ctx,needed){
+  if(ctx.y()+needed>280){ctx.doc.addPage();ctx.setY(16);}
+}
+function pdfSectionTitle(ctx,text){
+  pdfCheckPage(ctx,14);
+  ctx.doc.setFillColor(242,242,240);
+  ctx.doc.rect(ctx.ml,ctx.y(),ctx.usable,7,"F");
+  ctx.doc.setFont("helvetica","bold");
+  ctx.doc.setFontSize(8);
+  ctx.doc.setTextColor(122,125,133);
+  ctx.doc.text(text.toUpperCase(),ctx.ml+3,ctx.y()+5);
+  ctx.addY(10);
+}
+function pdfStatusColor(s){
+  if(s==="good")return[10,124,74];
+  if(s==="warn")return[180,83,9];
+  if(s==="bad")return[192,57,43];
+  return[150,155,163];
+}
+function pdfStatusBg(s){
+  if(s==="good")return[230,244,237];
+  if(s==="warn")return[254,243,226];
+  if(s==="bad")return[253,236,234];
+  return[240,240,238];
+}
+
+// ── PDF: KPI DASHBOARD ────────────────────────────────────────────────────────
+function exportKpiPDF(){
+  if(!LAST){alert("No KPI data yet. Run an import first.");return;}
+  ensureJsPDF(function(JsPDF){
+  var ctx=pdfInit(JsPDF,"KPI Dashboard",LCO+" — "+LPER+" | "+B[IND].name);
+  var doc=ctx.doc,ml=ctx.ml,usable=ctx.usable,W=ctx.W,mr=ctx.mr;
+  var b=B[IND];
+  var score=calcScore(LAST);
+  var scoreCol=score>=70?[10,124,74]:score>=45?[180,83,9]:[192,57,43];
+  var scoreLbl=score>=70?"Financially Healthy":score>=45?"Needs Attention":"At Risk";
+  // Score banner
+  pdfCheckPage(ctx,22);
+  doc.setFillColor(...(score>=70?[230,244,237]:score>=45?[254,243,226]:[253,236,234]));
+  doc.setDrawColor(...scoreCol);doc.setLineWidth(0.5);
+  doc.roundedRect(ml,ctx.y(),usable,18,2,2,"FD");
+  doc.setFont("helvetica","bold");doc.setFontSize(28);doc.setTextColor(...scoreCol);
+  doc.text(String(score),ml+8,ctx.y()+13);
+  doc.setFontSize(13);doc.text(scoreLbl,ml+22,ctx.y()+8);
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(60,64,71);
+  doc.text("Health score out of 100 vs "+B[IND].name+" benchmarks",ml+22,ctx.y()+14);
+  ctx.addY(23);
+
+  var sections=[
+    {title:"Profitability",items:[{l:"Gross Margin",v:LAST.grossMargin,t:"pct",bk:b.grossMargin},{l:"Net Profit Margin",v:LAST.netMargin,t:"pct",bk:b.netMargin},{l:"Operating Margin",v:LAST.opMargin,t:"pct",bk:b.opMargin},{l:"EBITDA Margin",v:LAST.ebitdaMargin,t:"pct",bk:b.ebitdaMargin},{l:"ROE",v:LAST.roe,t:"pct",bk:b.roe},{l:"ROA",v:LAST.roa,t:"pct",bk:b.roa},{l:"Contribution Margin",v:LAST.contributionMargin,t:"pct",bk:b.contributionMargin}]},
+    {title:"Liquidity & Cash Flow",items:[{l:"Current Ratio",v:LAST.currentRatio,t:"ratio",bk:b.currentRatio},{l:"Quick Ratio",v:LAST.quickRatio,t:"ratio",bk:b.quickRatio},{l:"Working Capital",v:LAST.workingCapital,t:"usd",bk:null},{l:"Operating Cash Flow",v:LAST.ocfVal,t:"usd",bk:null},{l:"Free Cash Flow",v:LAST.freeCashFlow,t:"usd",bk:null}]},
+    {title:"Efficiency",items:[{l:"Days Sales Outstanding",v:LAST.dso,t:"days",bk:b.dso},{l:"Inventory Turnover",v:LAST.inventoryTurnover,t:"turns",bk:b.inventoryTurnover},{l:"Total Asset Turnover",v:LAST.totalAssetTurnover,t:"ratio",bk:b.totalAssetTurnover},{l:"Sales per Employee (ann.)",v:LAST.salesPerEmployee,t:"usd",bk:b.salesPerEmployee}]},
+    {title:"Leverage",items:[{l:"Debt to Equity",v:LAST.debtEquity,t:"ratio",bk:b.debtEquity},{l:"Debt to Assets",v:LAST.debtAsset,t:"ratio",bk:b.debtAsset}]},
+    {title:"Break-even",items:[{l:"Break-even Sales",v:LAST.breakevenSales,t:"usd",bk:null},{l:"Break-even % of Revenue",v:LAST.breakevenPct,t:"pct",bk:b.breakevenPct}]},
+  ];
+  sections.forEach(function(sec){
+    pdfSectionTitle(ctx,sec.title);
+    // Header row
+    pdfCheckPage(ctx,9);
+    doc.setFillColor(230,232,235);
+    doc.rect(ml,ctx.y(),usable,7,"F");
+    doc.setFont("helvetica","bold");doc.setFontSize(7.5);doc.setTextColor(90,95,105);
+    ["KPI","Your Result","Target","Min","Status"].forEach(function(h,i){
+      var x=ml+[0,85,115,140,162][i];
+      doc.text(h,x,ctx.y()+5);
+    });
+    ctx.addY(8);
+    sec.items.forEach(function(it){
+      pdfCheckPage(ctx,9);
+      var s=gs(it.v,it.bk);
+      var bg=pdfStatusBg(s);
+      doc.setFillColor(...bg);
+      doc.rect(ml,ctx.y(),usable,7.5,"F");
+      // Left border stripe
+      doc.setFillColor(...pdfStatusColor(s));
+      doc.rect(ml,ctx.y(),2,7.5,"F");
+      doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(30,35,45);
+      doc.text(it.l,ml+4,ctx.y()+5.2);
+      doc.setFont("helvetica","bold");
+      doc.text(fmt(it.v,it.t),ml+85,ctx.y()+5.2);
+      doc.setFont("helvetica","normal");doc.setTextColor(100,105,115);
+      doc.text(it.bk&&it.bk.g!=null?fmt(it.bk.g,it.t):"—",ml+115,ctx.y()+5.2);
+      doc.text(it.bk&&it.bk.o!=null?fmt(it.bk.o,it.t):"—",ml+140,ctx.y()+5.2);
+      doc.setFont("helvetica","bold");doc.setTextColor(...pdfStatusColor(s));
+      doc.text(sl(s),ml+162,ctx.y()+5.2);
+      ctx.addY(8);
+    });
+    ctx.addY(4);
+  });
+  // Footer
+  doc.setFillColor(240,242,245);
+  doc.rect(0,284,210,13,"F");
+  doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120,125,133);
+  doc.text("Modonix LLC  |  Confidential — "+LCO+" — "+LPER,ml,290);
+  doc.text("Page 1",W-mr,290,{align:"right"});
+  pdfSave(doc,"Modonix_FinIQ_KPI_Dashboard_"+LCO+"_"+LPER+".pdf");
+  });// end ensureJsPDF
+}
+
+// ── PDF: ANALYSIS ─────────────────────────────────────────────────────────────
+function exportAnalysisPDF(){
+  if(!LINS||!LINS.length){alert("No analysis data yet. Run an import first.");return;}
+  ensureJsPDF(function(JsPDF){
+  var ctx=pdfInit(JsPDF,"Analysis & Insights",LCO+" — "+LPER);
+  var doc=ctx.doc,ml=ctx.ml,usable=ctx.usable,W=ctx.W,mr=ctx.mr;
+  var typeColor={good:[10,124,74],warn:[180,83,9],risk:[192,57,43],info:[26,86,219]};
+  var typeBg={good:[230,244,237],warn:[254,243,226],risk:[253,236,234],info:[232,240,254]};
+  var typeLabel={good:"STRENGTH",warn:"WATCH",risk:"RISK FLAG",info:"INSIGHT"};
+  LINS.forEach(function(ins){
+    var tc=typeColor[ins.type]||typeColor.info;
+    var tbg=typeBg[ins.type]||typeBg.info;
+    var titleLines=doc.splitTextToSize(ins.title,usable-30);
+    var bodyLines=doc.splitTextToSize(ins.body,usable-6);
+    var actionLines=ins.action?doc.splitTextToSize(ins.action,usable-10):[];
+    var needed=14+bodyLines.length*5+(actionLines.length?actionLines.length*5+10:0)+6;
+    pdfCheckPage(ctx,needed);
+    doc.setFillColor(...tbg);doc.setDrawColor(...tc);doc.setLineWidth(0.4);
+    var cardH=needed-4;
+    doc.roundedRect(ml,ctx.y(),usable,cardH,2,2,"FD");
+    doc.setFillColor(...tc);doc.rect(ml,ctx.y(),3,cardH,"F");
+    doc.setFillColor(...tc);doc.roundedRect(ml+5,ctx.y()+3,24,5.5,1,1,"F");
+    doc.setFont("helvetica","bold");doc.setFontSize(6.5);doc.setTextColor(255,255,255);
+    doc.text(typeLabel[ins.type]||"NOTE",ml+7,ctx.y()+7.2);
+    doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(15,17,23);
+    // title — render each line individually
+    var tly=ctx.y()+7;
+    titleLines.slice(0,2).forEach(function(tl){doc.text(String(tl),ml+32,tly);tly+=5;});
+    var y2=ctx.y()+13;
+    doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(61,64,71);
+    bodyLines.forEach(function(bl){doc.text(String(bl),ml+5,y2);y2+=5;});
+    y2+=3;
+    if(ins.action){
+      doc.setFillColor(255,255,255);doc.roundedRect(ml+5,y2,usable-10,actionLines.length*5+6,1,1,"F");
+      doc.setFont("helvetica","bold");doc.setFontSize(7);doc.setTextColor(...tc);
+      doc.text("ACTION",ml+8,y2+5);
+      doc.setFont("helvetica","normal");doc.setTextColor(61,64,71);
+      var ay=y2+5;
+      actionLines.forEach(function(al){doc.text(String(al),ml+24,ay);ay+=5;});
+      y2+=actionLines.length*5+8;
+    }
+    ctx.setY(y2+5);
+  });
+  doc.setFillColor(240,242,245);doc.rect(0,284,210,13,"F");
+  doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120,125,133);
+  doc.text("Modonix LLC  |  Confidential — "+LCO+" — "+LPER,ml,290);
+  pdfSave(doc,"Modonix_FinIQ_Analysis_"+LCO+"_"+LPER+".pdf");
+  });// end ensureJsPDF
+}
+
+// ── PDF: RECOMMENDATIONS ──────────────────────────────────────────────────────
+function exportRecsPDF(){
+  if(!LRECS||!LRECS.length){alert("No recommendations yet. Run an import first.");return;}
+  ensureJsPDF(function(JsPDF){
+  var ctx=pdfInit(JsPDF,"Recommendations & Action Plan",LCO+" — "+LPER);
+  var doc=ctx.doc,ml=ctx.ml,usable=ctx.usable,W=ctx.W,mr=ctx.mr;
+  var priColor={critical:[192,57,43],high:[180,83,9],medium:[26,86,219],good:[10,124,74]};
+  var priBg={critical:[253,236,234],high:[254,243,226],medium:[232,240,254],good:[230,244,237]};
+  var order=["critical","high","medium","good"];
+  var priLabel={critical:"CRITICAL — Fix immediately",high:"HIGH PRIORITY — Fix this month",medium:"MEDIUM — Plan for next quarter",good:"STRENGTHS — Keep doing this"};
+  var LINE_H=4.8; // line height in mm
+  var STEP_NUM_W=8; // width reserved for the step number
+  var STEP_TEXT_W=usable-20; // text width inside step box
+
+  order.forEach(function(pri){
+    var group=LRECS.filter(function(r){return r.priority===pri;});
+    if(!group.length)return;
+    pdfSectionTitle(ctx,priLabel[pri]);
+
+    group.forEach(function(rec){
+      var pc=priColor[pri];
+      var pb=priBg[pri];
+
+      // Pre-calculate all line arrays so we know total card height before drawing
+      var titleLines=doc.splitTextToSize(rec.title,usable-36);
+      var bodyLines=doc.splitTextToSize(rec.body,usable-8);
+      // Each step: {num, lines[]}
+      var parsedSteps=(rec.steps||[]).map(function(s,i){
+        return{num:(i+1)+".",lines:doc.splitTextToSize(String(s),STEP_TEXT_W)};
+      });
+      var stepsH=parsedSteps.reduce(function(acc,st){return acc+st.lines.length*LINE_H+2;},0)+10;
+      // No emoji in jsPDF standard fonts — use plain text
+      var impactLines=doc.splitTextToSize("Impact: "+String(rec.impact||""),usable-10);
+      var totalH=16                           // badge + title + kpi tag
+        +bodyLines.length*LINE_H+4            // body
+        +stepsH                                // steps box
+        +impactLines.length*LINE_H+6;          // impact
+
+      // If card is too tall for remaining page, start new page
+      if(ctx.y()+Math.min(totalH,50)>278){
+        doc.addPage();ctx.setY(16);
+      }
+
+      var startY=ctx.y();
+      var y2=startY;
+
+      // ── Badge + title row ──
+      doc.setFillColor(...pc);
+      doc.roundedRect(ml+3,y2+2,30,6,1,1,"F");
+      doc.setFont("helvetica","bold");doc.setFontSize(6.5);doc.setTextColor(255,255,255);
+      doc.text(pri.toUpperCase(),ml+5,y2+6.5);
+      doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(15,17,23);
+      // Render title lines one at a time — never pass array to doc.text()
+      var titleY=y2+6;
+      titleLines.slice(0,2).forEach(function(tl){
+        doc.text(String(tl),ml+36,titleY);
+        titleY+=5;
+      });
+      // KPI tag line
+      y2+=13;
+      doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...pc);
+      doc.text(String(rec.kpi)+":  "+String(rec.current)+"  >  target "+String(rec.target),ml+4,y2);
+      y2+=6;
+
+      // ── Body ──
+      doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(61,64,71);
+      bodyLines.forEach(function(bl){
+        if(y2+LINE_H>278){doc.addPage();y2=16;}
+        doc.text(String(bl),ml+4,y2);
+        y2+=LINE_H;
+      });
+      y2+=3;
+
+      // ── Steps box ──
+      var stepsStartY=y2;
+      // White background for steps area
+      doc.setFillColor(255,255,255);
+      doc.roundedRect(ml+4,stepsStartY,usable-8,stepsH,1.5,1.5,"F");
+      // "ACTION STEPS" label
+      doc.setFont("helvetica","bold");doc.setFontSize(7);doc.setTextColor(...pc);
+      doc.text("ACTION STEPS",ml+8,stepsStartY+5.5);
+      y2=stepsStartY+9;
+
+      parsedSteps.forEach(function(step){
+        // Check if we need a new page mid-steps
+        var stepH=step.lines.length*LINE_H+2;
+        if(y2+stepH>278){
+          doc.addPage();
+          y2=16;
+          // Re-draw white background header on new page
+          doc.setFillColor(255,255,255);
+          doc.roundedRect(ml+4,y2,usable-8,stepsH,1.5,1.5,"F");
+          y2+=4;
+        }
+        // Draw number — bold, accent color
+        doc.setFont("helvetica","bold");doc.setFontSize(8);doc.setTextColor(...pc);
+        doc.text(step.num,ml+8,y2+LINE_H-1);
+        // Draw each wrapped line of the step text — normal, dark
+        doc.setFont("helvetica","normal");doc.setTextColor(30,35,45);
+        step.lines.forEach(function(line,li){
+          doc.text(line,ml+8+STEP_NUM_W,y2+(li*LINE_H)+(LINE_H-1));
+        });
+        y2+=step.lines.length*LINE_H+2;
+      });
+      y2+=4; // padding after steps box
+
+      // ── Impact line ──
+      if(y2+impactLines.length*LINE_H+4>278){doc.addPage();y2=16;}
+      doc.setFont("helvetica","italic");doc.setFontSize(7.5);doc.setTextColor(120,125,133);
+      impactLines.forEach(function(il){
+        doc.text(String(il),ml+4,y2);y2+=LINE_H;
+      });
+      y2+=4;
+
+      // ── Card border (drawn last so it wraps everything) ──
+      var cardH=y2-startY;
+      doc.setDrawColor(...pc);doc.setLineWidth(0.4);
+      doc.setFillColor(...pb);
+      // Fill first, then re-draw content — jsPDF draws in order so
+      // we just draw a transparent stroke border on top
+      doc.roundedRect(ml,startY,usable,cardH,2,2,"S");
+      // Left color stripe
+      doc.setFillColor(...pc);
+      doc.rect(ml,startY,3,cardH,"F");
+
+      ctx.setY(y2+8);
+    });
+  });
+
+  // Footer
+  doc.setFillColor(240,242,245);
+  doc.rect(0,284,210,13,"F");
+  doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120,125,133);
+  doc.text("Modonix LLC  |  Confidential — "+LCO+" — "+LPER,ml,290);
+  doc.text(new Date().toLocaleDateString(),W-mr,290,{align:"right"});
+  pdfSave(doc,"Modonix_FinIQ_Recommendations_"+LCO+"_"+LPER+".pdf");
+  });// end ensureJsPDF
+}
+
+// ── PDF: COMPARISON ───────────────────────────────────────────────────────────
+function exportComparisonPDF(){
+  if(!CMPR.a||!CMPR.b){alert("No comparison data yet. Run a comparison first.");return;}
+  ensureJsPDF(function(JsPDF){
+  var ctx=pdfInit(JsPDF,"Period Comparison",CMPR.labelA+" vs "+CMPR.labelB+" | "+B[IND].name);
+  var doc=ctx.doc,ml=ctx.ml,usable=ctx.usable,W=ctx.W,mr=ctx.mr;
+  var scoreA=calcScore(CMPR.a),scoreB=calcScore(CMPR.b);
+  var colA=[26,92,255],colB=[180,83,9];
+  var scoreDiff=scoreB-scoreA;
+  pdfCheckPage(ctx,22);
+  doc.setFillColor(232,240,254);doc.setDrawColor(...colA);doc.setLineWidth(0.4);
+  doc.roundedRect(ml,ctx.y(),usable/2-4,18,2,2,"FD");
+  doc.setFont("helvetica","bold");doc.setFontSize(22);doc.setTextColor(...colA);
+  doc.text(String(scoreA),ml+5,ctx.y()+13);
+  doc.setFontSize(9);doc.setTextColor(40,50,80);
+  doc.text(CMPR.labelA,ml+20,ctx.y()+8);
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(100,110,130);
+  doc.text("Health Score",ml+20,ctx.y()+14);
+  var bx=ml+usable/2+2;
+  doc.setFillColor(254,243,226);doc.setDrawColor(...colB);
+  doc.roundedRect(bx,ctx.y(),usable/2-4,18,2,2,"FD");
+  doc.setFont("helvetica","bold");doc.setFontSize(22);doc.setTextColor(...colB);
+  doc.text(String(scoreB),bx+5,ctx.y()+13);
+  doc.setFontSize(9);doc.setTextColor(80,50,10);
+  doc.text(CMPR.labelB,bx+20,ctx.y()+8);
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(100,90,70);
+  var dStr=(scoreDiff>0?"+":"")+scoreDiff+" pts vs "+CMPR.labelA;
+  var dCol=scoreDiff>0?[10,124,74]:scoreDiff<0?[192,57,43]:[120,125,133];
+  doc.setTextColor(...dCol);doc.setFont("helvetica","bold");
+  doc.text(dStr,bx+20,ctx.y()+14);
+  ctx.addY(24);
+
+  // KPI table
+  pdfSectionTitle(ctx,"KPI Side-by-Side");
+  // Header
+  pdfCheckPage(ctx,9);
+  doc.setFillColor(30,36,50);doc.rect(ml,ctx.y(),usable,7,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(7.5);
+  var cols=["KPI",CMPR.labelA,CMPR.labelB,"Change","Direction"];
+  var cx=[ml+2,ml+82,ml+112,ml+142,ml+162];
+  cols.forEach(function(h,i){
+    doc.setTextColor(i===1?180:i===2?220:200,i===1?160:i===2?130:200,i===1?80:i===2?80:200);
+    doc.text(h,cx[i],ctx.y()+5);
+  });
+  ctx.addY(8);
+  var sections=["Revenue","Profitability","Liquidity","Efficiency","Leverage","Break-even"];
+  var lastSec="";
+  CMP_KPIS.forEach(function(k,ri){
+    var vA=getKPIVal(CMPR.a,k.key),vB=getKPIVal(CMPR.b,k.key);
+    if(vA==null&&vB==null)return;
+    if(k.section!==lastSec){
+      lastSec=k.section;
+      pdfCheckPage(ctx,6);
+      doc.setFillColor(240,242,245);doc.rect(ml,ctx.y(),usable,5,"F");
+      doc.setFont("helvetica","bold");doc.setFontSize(6.5);doc.setTextColor(120,125,133);
+      doc.text(k.section.toUpperCase(),ml+2,ctx.y()+3.8);
+      ctx.addY(6);
+    }
+    pdfCheckPage(ctx,8);
+    var diff=vA!=null&&vB!=null?vB-vA:null;
+    var dir=diff!=null?cmpDirection(diff,k.better):"flat";
+    var bg=ri%2===0?[255,255,255]:[248,249,250];
+    doc.setFillColor(...bg);doc.rect(ml,ctx.y(),usable,7,"F");
+    doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(40,45,55);
+    doc.text(k.label,cx[0],ctx.y()+5);
+    doc.setFont("helvetica","bold");doc.setTextColor(...colA);
+    doc.text(fmt(vA,k.t),cx[1],ctx.y()+5);
+    doc.setTextColor(...colB);
+    doc.text(fmt(vB,k.t),cx[2],ctx.y()+5);
+    if(diff!=null){
+      var sign=diff>=0?"+":"";
+      var ds;
+      if(k.t==="pct")ds=sign+diff.toFixed(1)+"pp";
+      else if(k.t==="usd")ds=(diff>=0?"+":"-")+"$"+Math.abs(Math.round(diff)).toLocaleString();
+      else if(k.t==="days")ds=sign+Math.round(diff)+"d";
+      else ds=sign+diff.toFixed(2);
+      var dc=dir==="improved"?[10,124,74]:dir==="declined"?[192,57,43]:[120,125,133];
+      doc.setTextColor(...dc);
+      doc.text(ds,cx[3],ctx.y()+5);
+      doc.setFont("helvetica","normal");
+      doc.text(dir==="improved"?"^ Improved":dir==="declined"?"v Declined":"- Flat",cx[4],ctx.y()+5);
+    }
+    ctx.addY(7.5);
+  });
+  doc.setFillColor(240,242,245);doc.rect(0,284,210,13,"F");
+  doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120,125,133);
+  doc.text("Modonix LLC  |  Comparison: "+CMPR.labelA+" vs "+CMPR.labelB,ml,290);
+  doc.text(new Date().toLocaleDateString(),W-mr,290,{align:"right"});
+  pdfSave(doc,"Modonix_FinIQ_Comparison_"+CMPR.labelA.replace(/\s/g,"_")+"_vs_"+CMPR.labelB.replace(/\s/g,"_")+".pdf");
+  });// end ensureJsPDF
+}
+
+// ── PDF: COMPARISON RECOMMENDATIONS ──────────────────────────────────────────
+function exportComparisonRecsPDF(){
+  if(!CMPR.a||!CMPR.b){alert("No comparison data yet. Run a comparison first.");return;}
+  var recs=CMPR.recs;
+  var total=(recs.decl||[]).length+(recs.newIssue||[]).length+(recs.resolved||[]).length+(recs.impr||[]).length;
+  if(!total){alert("No recommendation changes found in this comparison.");return;}
+  ensureJsPDF(function(JsPDF){
+  var labelA=CMPR.labelA,labelB=CMPR.labelB;
+  var ctx=pdfInit(JsPDF,"Comparison Recommendations",labelA+" vs "+labelB+" | "+B[IND].name);
+  var doc=ctx.doc,ml=ctx.ml,usable=ctx.usable,W=ctx.W,mr=ctx.mr;
+  var LINE_H=4.8;
+  var STEP_TEXT_W=usable-22;
+
+  // Colour scheme per category
+  var catColor={
+    "declined":[192,57,43],
+    "new-issue":[180,83,9],
+    "resolved":[26,86,219],
+    "improved":[10,124,74]
+  };
+  var catBg={
+    "declined":[253,236,234],
+    "new-issue":[254,243,226],
+    "resolved":[232,240,254],
+    "improved":[230,244,237]
+  };
+  var catLabel={
+    "declined":"DECLINED",
+    "new-issue":"NEW ISSUE",
+    "resolved":"RESOLVED",
+    "improved":"IMPROVED"
+  };
+  var sections=[
+    {title:"Declined — Needs attention",items:recs.decl||[]},
+    {title:"New Issues in "+labelB,items:recs.newIssue||[]},
+    {title:"Resolved — Was a problem, now fixed",items:recs.resolved||[]},
+    {title:"Improved — Keep this momentum",items:recs.impr||[]}
+  ];
+
+  sections.forEach(function(sec){
+    if(!sec.items.length)return;
+    pdfSectionTitle(ctx,sec.title);
+
+    sec.items.forEach(function(rec){
+      var advice=getCmpAdvice(rec,labelA,labelB);
+      var pc=catColor[rec.cat]||[90,90,90];
+      var pb=catBg[rec.cat]||[245,245,245];
+      var badge=catLabel[rec.cat]||rec.cat.toUpperCase();
+
+      // Pre-split all text
+      var kpiLine=String(rec.kpi);
+      var valueLine=String(labelA)+": "+fmt(rec.vA,rec.t)+"   >   "+String(labelB)+": "+fmt(rec.vB,rec.t)+"   ("+String(rec.delta)+")";
+      var ctxLines=doc.splitTextToSize(String(advice.context),usable-8);
+      var parsedSteps=(advice.steps||[]).map(function(s,i){
+        return{num:(i+1)+".",lines:doc.splitTextToSize(String(s),STEP_TEXT_W)};
+      });
+      var stepsH=parsedSteps.reduce(function(acc,st){return acc+st.lines.length*LINE_H+2;},0)+10;
+      var totalH=18+ctxLines.length*LINE_H+4+stepsH+6;
+
+      if(ctx.y()+Math.min(totalH,50)>278){doc.addPage();ctx.setY(16);}
+      var startY=ctx.y();
+      var y2=startY;
+
+      // Badge
+      doc.setFillColor(...pc);
+      doc.roundedRect(ml+3,y2+2,32,6,1,1,"F");
+      doc.setFont("helvetica","bold");doc.setFontSize(7);doc.setTextColor(255,255,255);
+      doc.text(badge,ml+5,y2+6.5);
+
+      // KPI name
+      doc.setFont("helvetica","bold");doc.setFontSize(10);doc.setTextColor(15,17,23);
+      doc.text(kpiLine,ml+38,y2+7);
+      y2+=13;
+
+      // Value line
+      doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(...pc);
+      doc.text(valueLine,ml+4,y2);
+      y2+=6;
+
+      // Context lines
+      doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(61,64,71);
+      ctxLines.forEach(function(cl){
+        if(y2+LINE_H>278){doc.addPage();y2=16;}
+        doc.text(String(cl),ml+4,y2);y2+=LINE_H;
+      });
+      y2+=3;
+
+      // Steps box
+      var stepsStartY=y2;
+      doc.setFillColor(255,255,255);
+      doc.roundedRect(ml+4,stepsStartY,usable-8,stepsH,1.5,1.5,"F");
+      doc.setFont("helvetica","bold");doc.setFontSize(7);doc.setTextColor(...pc);
+      doc.text("ACTION STEPS FOR "+String(labelB).toUpperCase(),ml+8,stepsStartY+5.5);
+      y2=stepsStartY+9;
+
+      parsedSteps.forEach(function(step){
+        if(y2+step.lines.length*LINE_H+2>278){doc.addPage();y2=16;}
+        doc.setFont("helvetica","bold");doc.setFontSize(8);doc.setTextColor(...pc);
+        doc.text(step.num,ml+8,y2+LINE_H-1);
+        doc.setFont("helvetica","normal");doc.setTextColor(30,35,45);
+        step.lines.forEach(function(line,li){
+          doc.text(String(line),ml+16,y2+(li*LINE_H)+(LINE_H-1));
+        });
+        y2+=step.lines.length*LINE_H+2;
+      });
+      y2+=4;
+
+      // Card border + left stripe
+      var cardH=y2-startY;
+      doc.setDrawColor(...pc);doc.setLineWidth(0.4);
+      doc.roundedRect(ml,startY,usable,cardH,2,2,"S");
+      doc.setFillColor(...pc);doc.rect(ml,startY,3,cardH,"F");
+      ctx.setY(y2+8);
+    });
+  });
+
+  // Footer
+  doc.setFillColor(240,242,245);doc.rect(0,284,210,13,"F");
+  doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120,125,133);
+  doc.text("Modonix LLC  |  Comparison Recommendations: "+labelA+" vs "+labelB,ml,290);
+  doc.text(new Date().toLocaleDateString(),W-mr,290,{align:"right"});
+  pdfSave(doc,"Modonix_FinIQ_Comparison_Recs_"+labelA.replace(/\s/g,"_")+"_vs_"+labelB.replace(/\s/g,"_")+".pdf");
+  });// end ensureJsPDF
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+function kpiRows(r,ind){var b=B[ind];return[["Gross Margin (%)",r.grossMargin!=null?+r.grossMargin.toFixed(1):null,b.grossMargin.g,b.grossMargin.o,gs(r.grossMargin,b.grossMargin)],["Net Profit Margin (%)",r.netMargin!=null?+r.netMargin.toFixed(1):null,b.netMargin.g,b.netMargin.o,gs(r.netMargin,b.netMargin)],["Operating Margin (%)",r.opMargin!=null?+r.opMargin.toFixed(1):null,b.opMargin.g,b.opMargin.o,gs(r.opMargin,b.opMargin)],["EBITDA Margin (%)",r.ebitdaMargin!=null?+r.ebitdaMargin.toFixed(1):null,b.ebitdaMargin.g,b.ebitdaMargin.o,gs(r.ebitdaMargin,b.ebitdaMargin)],["ROE (%)",r.roe!=null?+r.roe.toFixed(1):null,b.roe.g,b.roe.o,gs(r.roe,b.roe)],["ROA (%)",r.roa!=null?+r.roa.toFixed(1):null,b.roa.g,b.roa.o,gs(r.roa,b.roa)],["Current Ratio",r.currentRatio!=null?+r.currentRatio.toFixed(2):null,b.currentRatio.g,b.currentRatio.o,gs(r.currentRatio,b.currentRatio)],["Quick Ratio",r.quickRatio!=null?+r.quickRatio.toFixed(2):null,b.quickRatio.g,b.quickRatio.o,gs(r.quickRatio,b.quickRatio)],["Working Capital ($)",r.workingCapital!=null?Math.round(r.workingCapital):null,null,null,"na"],["Operating Cash Flow ($)",r.ocfVal!=null?Math.round(r.ocfVal):null,null,null,"na"],["DSO",r.dso!=null?Math.round(r.dso):null,b.dso.g,b.dso.o,gs(r.dso,b.dso)],["Inventory Turnover",r.inventoryTurnover!=null?+r.inventoryTurnover.toFixed(1):null,b.inventoryTurnover.g,b.inventoryTurnover.o,gs(r.inventoryTurnover,b.inventoryTurnover)],["Debt to Equity",r.debtEquity!=null?+r.debtEquity.toFixed(2):null,b.debtEquity.g,b.debtEquity.o,gs(r.debtEquity,b.debtEquity)],["Debt to Assets",r.debtAsset!=null?+r.debtAsset.toFixed(2):null,b.debtAsset.g,b.debtAsset.o,gs(r.debtAsset,b.debtAsset)],["Sales per Employee ($)",r.salesPerEmployee!=null?Math.round(r.salesPerEmployee):null,b.salesPerEmployee.g,b.salesPerEmployee.o,gs(r.salesPerEmployee,b.salesPerEmployee)]];}
 
 function saveHist(r,ins,recs,per,co){
   var rec={id:Date.now(),company:co,period:per,industry:IND,kpis:r,insights:ins,recs:recs,savedAt:new Date().toLocaleDateString()};
-  HIST.unshift(rec);
-  if(HIST.length>60)HIST=HIST.slice(0,60);
+  HIST.unshift(rec);if(HIST.length>60)HIST=HIST.slice(0,60);
   try{localStorage.setItem("finiq_h",JSON.stringify(HIST));}catch(e){}
 }
 
@@ -661,9 +1873,9 @@ function renderHist(){
     var lat=HIST[0],prv=HIST[1];
     var items=[{n:"Revenue",c:lat.kpis.raw&&lat.kpis.raw.revenue,p:prv.kpis.raw&&prv.kpis.raw.revenue,t:"usd"},{n:"Gross Margin",c:lat.kpis.grossMargin,p:prv.kpis.grossMargin,t:"pct"},{n:"Net Margin",c:lat.kpis.netMargin,p:prv.kpis.netMargin,t:"pct"},{n:"Current Ratio",c:lat.kpis.currentRatio,p:prv.kpis.currentRatio,t:"ratio"},{n:"Working Capital",c:lat.kpis.workingCapital,p:prv.kpis.workingCapital,t:"usd"},{n:"Inventory Turnover",c:lat.kpis.inventoryTurnover,p:prv.kpis.inventoryTurnover,t:"turns"}];
     var th='<div class="stitle" style="margin-top:24px">Period over period: '+prv.period+' vs '+lat.period+'</div>';
-    th+=items.filter(function(t){return t.c!=null&&t.p!=null;}).map(function(t){var d=t.c-t.p;var pc=t.p!==0?(d/Math.abs(t.p)*100).toFixed(1)+"%":"--";var up=d>0.001,dn=d<-0.001;var cls=up?"tup":dn?"tdown":"tflat";var arr=up?"&#9650;":dn?"&#9660;":"&#8212;";return'<div class="tbox"><span class="tname">'+t.n+'</span><span class="tvals"><span>'+fmt(t.p,t.t)+'</span><span class="'+cls+'"> '+arr+' </span><span>'+fmt(t.c,t.t)+'</span><span style="color:var(--ink3);font-size:11px">('+pc+' change)</span></span></div>';}).join("");
+    th+=items.filter(function(t){return t.c!=null&&t.p!=null;}).map(function(t){var d=t.c-t.p;var pc=t.p!==0?(d/Math.abs(t.p)*100).toFixed(1)+"%":"--";var up=d>0.001,dn=d<-0.001;var cls=up?"tup":dn?"tdown":"tflat";var arr=up?"&#9650;":dn?"&#9660;":"&#8212;";return'<div class="tbox"><span class="tname">'+t.n+'</span><span class="tvals"><span>'+fmt(t.p,t.t)+'</span><span class="'+cls+'"> '+arr+' </span><span>'+fmt(t.c,t.t)+'</span><span style="color:var(--ink3);font-size:11px">('+pc+')</span></span></div>';}).join("");
     document.getElementById("histtrend").innerHTML=th;
-  }else{document.getElementById("histtrend").innerHTML='<div style="font-size:12px;color:var(--ink3);padding:12px 0">Add a second period to see trend comparisons.</div>';}
+  } else document.getElementById("histtrend").innerHTML="";
 }
 
 function loadRec(i){
@@ -680,53 +1892,40 @@ function loadRec(i){
   sw("kpis");
 }
 function delRec(i){if(!confirm("Delete this record?"))return;HIST.splice(i,1);try{localStorage.setItem("finiq_h",JSON.stringify(HIST));}catch(e){}renderHist();}
-function clearHist(){if(!confirm("Clear all history? Cannot be undone."))return;HIST=[];try{localStorage.setItem("finiq_h","[]");}catch(e){}renderHist();}
+function clearHist(){if(!confirm("Clear all history?"))return;HIST=[];try{localStorage.setItem("finiq_h","[]");}catch(e){}renderHist();}
 
-// //  EXPORTS
+// ── EXPORTS ───────────────────────────────────────────────────────────────────
 function exportSingle(){
   if(!LAST)return;var wb=XLSX.utils.book_new();
-  var d=[["KPI","Your Result","Industry Target","Industry Minimum","Status"]];
+  var d=[["Modonix LLC — FinIQ Financial Intelligence"],["Prepared by Modonix LLC  |  Confidential"],[""],["KPI","Your Result","Industry Target","Industry Minimum","Status"]];
   kpiRows(LAST,IND).forEach(function(r){d.push(r);});
   var ws=XLSX.utils.aoa_to_sheet(d);ws["!cols"]=[{wch:30},{wch:16},{wch:18},{wch:18},{wch:16}];
   XLSX.utils.book_append_sheet(wb,ws,"KPI Results");
-  if(LINS){var ad=[["Type","Title","Analysis","Action Step"]];LINS.forEach(function(i){ad.push([i.type.toUpperCase(),i.title,i.body,i.action||""]);});var ws2=XLSX.utils.aoa_to_sheet(ad);ws2["!cols"]=[{wch:12},{wch:35},{wch:60},{wch:60}];XLSX.utils.book_append_sheet(wb,ws2,"Analysis");}
-  XLSX.writeFile(wb,"FinIQ_"+LCO+"_"+LPER+".xlsx");
+  if(LINS){var ad=[["Type","Title","Analysis","Action"]];LINS.forEach(function(i){ad.push([i.type.toUpperCase(),i.title,i.body,i.action||""]);});var ws2=XLSX.utils.aoa_to_sheet(ad);ws2["!cols"]=[{wch:12},{wch:35},{wch:60},{wch:60}];XLSX.utils.book_append_sheet(wb,ws2,"Analysis");}
+  XLSX.writeFile(wb,"Modonix_FinIQ_"+LCO+"_"+LPER+".xlsx");
 }
 function exportBM(){
   if(!LAST)return;var b=B[IND],wb=XLSX.utils.book_new();
-  var d=[["KPI","Your Result",b.name+" Target",b.name+" Min","Status"]];
+  var d=[["Modonix LLC — FinIQ Financial Intelligence"],["Prepared by Modonix LLC  |  Confidential"],[""],["KPI","Your Result",b.name+" Target",b.name+" Min","Status"]];
   kpiRows(LAST,IND).forEach(function(r){d.push([r[0],r[1],r[2],r[3],r[4]]);});
   var ws=XLSX.utils.aoa_to_sheet(d);ws["!cols"]=[{wch:30},{wch:16},{wch:22},{wch:18},{wch:16}];
-  XLSX.utils.book_append_sheet(wb,ws,"Benchmark");XLSX.writeFile(wb,"FinIQ_Benchmarks_"+LCO+"_"+LPER+".xlsx");
+  XLSX.utils.book_append_sheet(wb,ws,"Benchmark");XLSX.writeFile(wb,"Modonix_FinIQ_Benchmarks_"+LCO+"_"+LPER+".xlsx");
 }
 function exportHistory(){
   if(!HIST.length){alert("No history to export yet.");return;}
   var wb=XLSX.utils.book_new();
-  var knames=["Gross Margin (%)","Net Profit Margin (%)","Operating Margin (%)","EBITDA Margin (%)","ROE (%)","ROA (%)","ROI (%)","Contribution Margin (%)","Current Ratio","Quick Ratio","Working Capital ($)","Operating Cash Flow ($)","Free Cash Flow ($)","Days Sales Outstanding","Inventory Turnover","Total Asset Turnover","Sales per Employee ($)","Debt to Equity","Debt to Assets","Break-even Sales ($)","Break-even % of Revenue"];
-  var h1=[["KPI"].concat(HIST.map(function(h){return h.company+" -- "+h.period;}))];
+  var knames=["Gross Margin (%)","Net Profit Margin (%)","Operating Margin (%)","EBITDA Margin (%)","ROE (%)","ROA (%)","Current Ratio","Quick Ratio","Working Capital ($)","Operating Cash Flow ($)","DSO","Inventory Turnover","Debt to Equity","Debt to Assets","Sales per Employee ($)"];
+  var h1=[["Modonix LLC — FinIQ Financial Intelligence"],["Prepared by Modonix LLC  |  Confidential"],[""],["KPI"].concat(HIST.map(function(h){return h.company+" -- "+h.period;}))];
   knames.forEach(function(n,i){var row=[n];HIST.forEach(function(h){var rows=kpiRows(h.kpis,h.industry);row.push(rows[i]?rows[i][1]:null);});h1.push(row);});
   var ws1=XLSX.utils.aoa_to_sheet(h1);var c1=[{wch:30}];HIST.forEach(function(){c1.push({wch:22});});ws1["!cols"]=c1;
   XLSX.utils.book_append_sheet(wb,ws1,"All KPIs Side by Side");
-  var h2=[["KPI","Industry Target","Industry Min"].concat(HIST.map(function(h){return h.period+" ("+h.company+")";}))];
-  var fh=HIST[0],fr=kpiRows(fh.kpis,fh.industry);
-  knames.forEach(function(n,i){var row=[n,fr[i]?fr[i][2]:null,fr[i]?fr[i][3]:null];HIST.forEach(function(h){var rows=kpiRows(h.kpis,h.industry);row.push(rows[i]?rows[i][1]:null);});h2.push(row);});
-  var ws2=XLSX.utils.aoa_to_sheet(h2);var c2=[{wch:30},{wch:18},{wch:18}];HIST.forEach(function(){c2.push({wch:22});});ws2["!cols"]=c2;
-  XLSX.utils.book_append_sheet(wb,ws2,"Benchmark Comparison");
-  var h3=[["KPI","From Period","From Value","To Period","To Value","Change","% Change","Direction"]];
-  if(HIST.length>=2){var lat2=HIST[0],prv2=HIST[1];var lr=kpiRows(lat2.kpis,lat2.industry),pr=kpiRows(prv2.kpis,prv2.industry);lr.forEach(function(row,i){var p=pr[i];if(row[1]!=null&&p&&p[1]!=null){var diff=row[1]-p[1];var pct=p[1]!==0?(diff/Math.abs(p[1])*100).toFixed(1)+"%":"N/A";var dir=diff>0.001?"Increase":diff<-0.001?"Decrease":"No change";h3.push([row[0],prv2.period,p[1],lat2.period,row[1],+diff.toFixed(2),pct,dir]);}});}
-  var ws3=XLSX.utils.aoa_to_sheet(h3);ws3["!cols"]=[{wch:30},{wch:18},{wch:14},{wch:18},{wch:14},{wch:12},{wch:12},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,ws3,"Trend Changes");
-  var h4=[["Period","Company","Type","Title","Analysis","Action Step"]];
-  HIST.forEach(function(h){if(h.insights)h.insights.forEach(function(i){h4.push([h.period,h.company,i.type.toUpperCase(),i.title,i.body,i.action||""]);});});
-  var ws4=XLSX.utils.aoa_to_sheet(h4);ws4["!cols"]=[{wch:18},{wch:20},{wch:10},{wch:35},{wch:60},{wch:60}];
-  XLSX.utils.book_append_sheet(wb,ws4,"Analysis by Period");
-  XLSX.writeFile(wb,"FinIQ_Full_History_"+new Date().toISOString().slice(0,10)+".xlsx");
+  XLSX.writeFile(wb,"Modonix_FinIQ_Full_History_"+new Date().toISOString().slice(0,10)+".xlsx");
 }
 
-// //  MAIN RUN
+// ── MAIN RUN ──────────────────────────────────────────────────────────────────
 function runAnalysis(){
   var pl=FD.pl,bs=FD.bs;
-  if(!pl&&!bs){document.getElementById("imperr").innerHTML='<div class="errmsg">Please upload at least your P&L Statement and Balance Sheet files before running.</div>';return;}
+  if(!pl&&!bs){document.getElementById("imperr").innerHTML='<div class="errmsg">Please upload at least P&L and Balance Sheet before running.</div>';return;}
   document.getElementById("imperr").innerHTML="";
   var emp=parseInt(document.getElementById("emp").value)||1;
   var co=document.getElementById("coname").value.trim()||"My Company";
@@ -742,26 +1941,57 @@ function runAnalysis(){
       document.getElementById("ptag").textContent=per;
       document.getElementById("kpititle").textContent=co+" -- KPI Dashboard";
       document.getElementById("kpisub").textContent=per+" | "+B[IND].name;
-      renderKPIs(r);
-      renderAnalysis(ins);
-      renderBM(r);
+      renderKPIs(r);renderAnalysis(ins);renderBM(r);
       saveHist(r,ins,recs,per,co);
       renderRecs(r,per,co);
+      // ── Populate debug panel ──
+      var d=r.raw;
+      var debugRows=[
+        {f:"Revenue",v:d.revenue,src:"P&L"},
+        {f:"COGS",v:d.cogs,src:"P&L"},
+        {f:"Gross Profit",v:d.grossProfit,src:"P&L"},
+        {f:"Operating Expenses",v:d.opEx,src:"P&L"},
+        {f:"Operating Income",v:d.opIncome,src:"P&L"},
+        {f:"Net Income",v:d.netIncome,src:"P&L"},
+        {f:"Depreciation & Amort.",v:d.depAmort,src:"P&L"},
+        {f:"Cash",v:d.cash,src:"Balance Sheet"},
+        {f:"Accounts Receivable",v:d.ar,src:"Balance Sheet"},
+        {f:"Inventory",v:d.inventory,src:"Balance Sheet"},
+        {f:"Current Assets",v:d.currentAssets,src:"Balance Sheet"},
+        {f:"Total Assets",v:d.totalAssets,src:"Balance Sheet"},
+        {f:"Accounts Payable",v:d.ap,src:"Balance Sheet"},
+        {f:"Current Liabilities",v:d.currentLiab,src:"Balance Sheet"},
+        {f:"Total Liabilities",v:d.totalLiab,src:"Balance Sheet"},
+        {f:"Equity",v:d.equity,src:"Balance Sheet"},
+        {f:"Operating Cash Flow (OCF)",v:d.ocf,src:"Cash Flow",highlight:true},
+        {f:"CapEx",v:d.capex,src:"Cash Flow"},
+      ];
+      document.getElementById("debug-tbody").innerHTML=debugRows.map(function(row){
+        var valStr=row.v!=null?'<strong style="color:var(--success)">$'+Math.round(row.v).toLocaleString()+'</strong>':'<span style="color:var(--danger);font-weight:700">null — not found</span>';
+        var rowStyle=row.highlight?"background:#fffbf0;":"";
+        return'<tr style="'+rowStyle+'"><td style="font-weight:'+(row.highlight?"700":"400")+'">'+row.f+'</td><td>'+valStr+'</td><td style="color:var(--ink3)">'+row.src+'</td></tr>';
+      }).join("");
+      // Warn if OCF is null or suspiciously high
+      var warnEl=document.getElementById("debug-cf-warn");
+      if(!FD.cf){warnEl.textContent="No Cash Flow Statement uploaded — OCF and Free Cash Flow will show as N/A.";warnEl.style.display="block";}
+      else if(d.ocf==null){warnEl.textContent="Cash Flow file was uploaded but Operating Cash Flow could not be found. The label in your QuickBooks export doesn't match any known variant. Please check the Import tab debug table and contact support with your exact row label.";warnEl.style.display="block";}
+      else if(d.revenue!=null&&Math.abs(d.ocf)>d.revenue*2){warnEl.textContent="Warning: OCF value ($"+Math.round(d.ocf).toLocaleString()+") looks unusually large relative to revenue. The parser may have matched the wrong row — please verify against your Cash Flow Statement.";warnEl.style.display="block";}
+      else{warnEl.style.display="none";}
+      document.getElementById("parse-debug").style.display="block";
       sw("kpis");
-    }catch(e){
-      document.getElementById("imperr").innerHTML='<div class="errmsg">Error: '+e.message+'</div>';
-    }
+    }catch(e){document.getElementById("imperr").innerHTML='<div class="errmsg">Error: '+e.message+'</div>';}
     btn.disabled=false;btn.textContent="Calculate All KPIs & Generate Analysis";
   },100);
 }
 
-// //  NAV  UTILS
+// ── NAV ───────────────────────────────────────────────────────────────────────
+var TABS=["import","kpis","analysis","benchmark","recommendations","compare","history"];
 function sw(n){
-  var ns=["import","kpis","analysis","benchmark","recommendations","history"];
-  ns.forEach(function(x,i){document.querySelectorAll(".ntab")[i].classList.remove("on");document.getElementById("p-"+x).classList.remove("on");});
-  document.querySelectorAll(".ntab")[ns.indexOf(n)].classList.add("on");
+  TABS.forEach(function(x,i){document.querySelectorAll(".ntab")[i].classList.remove("on");document.getElementById("p-"+x).classList.remove("on");});
+  document.querySelectorAll(".ntab")[TABS.indexOf(n)].classList.add("on");
   document.getElementById("p-"+n).classList.add("on");
   if(n==="history")renderHist();
+  if(n==="compare")populateCmpSelects();
 }
 function onInd(){IND=document.getElementById("industry").value;if(LAST){renderKPIs(LAST);renderBM(LAST);document.getElementById("kpisub").textContent=LPER+" | "+B[IND].name;}}
 
