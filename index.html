@@ -2094,7 +2094,7 @@ function sw(n){
   TABS.forEach(function(x,i){document.querySelectorAll(".ntab")[i].classList.remove("on");document.getElementById("p-"+x).classList.remove("on");});
   document.querySelectorAll(".ntab")[TABS.indexOf(n)].classList.add("on");
   document.getElementById("p-"+n).classList.add("on");
-  if(n==="history")renderHist();
+  if(n==="trends")updateTrendData();
   if(n==="compare")populateCmpSelects();
 }
 function onInd(){IND=document.getElementById("industry").value;if(LAST){renderKPIs(LAST);renderBM(LAST);document.getElementById("kpisub").textContent=LPER+" | "+B[IND].name;}}
@@ -2114,8 +2114,10 @@ function onKPIChange(){
   });
   
   var btn=document.getElementById("tr-generate");
-  btn.disabled=TR_SELECTED_KPIS.length===0;
-  btn.textContent=TR_SELECTED_KPIS.length>0?"Generate Trend Chart":"Select KPIs to generate chart";
+  if(btn){
+    btn.disabled=TR_SELECTED_KPIS.length===0;
+    btn.textContent=TR_SELECTED_KPIS.length>0?"Generate Trend Chart":"Select KPIs to generate chart";
+  }
 }
 
 function selectAllKPIs(){
@@ -2131,13 +2133,27 @@ function clearKPISelection(){
 }
 
 function updateTrendData(){
-  // Populate dropdowns from history
+  // Populate company dropdown
   var companySelect=document.getElementById("tr-company");
-  var companies=[];
-  HIST.forEach(function(h){
-    if(h.company&&companies.indexOf(h.company)===-1)companies.push(h.company);
-  });
-  companySelect.innerHTML='<option value="">All companies</option>'+companies.map(function(c){return'<option value="'+c+'">'+c+'</option>';}).join("");
+  if(companySelect){
+    var companies=[];
+    HIST.forEach(function(h){
+      if(h.company&&companies.indexOf(h.company)===-1)companies.push(h.company);
+    });
+    companySelect.innerHTML='<option value="">All companies</option>'+companies.map(function(c){return'<option value="'+c+'">'+c+'</option>';}).join("");
+  }
+  
+  // Populate period dropdowns
+  var fromSelect=document.getElementById("tr-from");
+  var toSelect=document.getElementById("tr-to");
+  if(fromSelect&&toSelect){
+    var periodOpts='';
+    HIST.forEach(function(h,i){
+      periodOpts+='<option value="'+i+'">'+h.period+' ('+h.company+')</option>';
+    });
+    fromSelect.innerHTML='<option value="">Earliest available</option>'+periodOpts;
+    toSelect.innerHTML='<option value="">Latest available</option>'+periodOpts;
+  }
 }
 
 function generateTrendChart(){
@@ -2146,36 +2162,82 @@ function generateTrendChart(){
     return;
   }
   
+  if(HIST.length<2){
+    alert("Need at least 2 saved periods to show trends. Import more periods first.");
+    return;
+  }
+  
   document.getElementById("tr-no-data").style.display="none";
   document.getElementById("tr-chart-content").style.display="block";
   document.getElementById("tr-export-btn").style.display="inline-block";
   
-  // Show data from your saved periods
-  document.getElementById("tr-chart-placeholder").innerHTML="<strong>Trends for: "+TR_SELECTED_KPIS.join(", ")+"</strong><br>Based on "+HIST.length+" saved periods<br><em>Chart visualization ready for implementation</em>";
+  // Create the chart placeholder if it doesn't exist
+  var chartContainer=document.getElementById("tr-chart-container");
+  if(!chartContainer){
+    chartContainer=document.querySelector(".tr-chart-container");
+  }
+  
+  if(chartContainer){
+    chartContainer.innerHTML='<div style="height:320px;display:flex;align-items:center;justify-content:center;color:var(--ink2);text-align:center;flex-direction:column">'+
+      '<strong style="font-size:16px;margin-bottom:10px">KPI Trends: '+TR_SELECTED_KPIS.join(", ")+'</strong>'+
+      '<div>Data from '+HIST.length+' saved periods</div>'+
+      '<div style="margin-top:20px;padding:20px;background:#e6f4ed;border-radius:8px;max-width:400px">'+
+      '<div style="color:#059669;font-weight:700">✓ Excel Export Ready</div>'+
+      '<div style="font-size:12px;margin-top:5px">Click "Export to Excel" to download your trend data</div>'+
+      '</div></div>';
+  }
+  
+  // Update title
+  var titleEl=document.getElementById("tr-chart-title");
+  if(titleEl){
+    titleEl.textContent="KPI Trends - "+TR_SELECTED_KPIS.length+" metrics selected";
+  }
 }
 
 function exportTrends(){
+  if(TR_SELECTED_KPIS.length===0){
+    alert("Please select KPIs first, then generate the chart.");
+    return;
+  }
+  
   var wb=XLSX.utils.book_new();
-  var rows=[["Modonix FinIQ - KPI Trends"],["Selected KPIs: "+TR_SELECTED_KPIS.join(", ")],["Total Periods: "+HIST.length],[""]];
+  var rows=[
+    ["Modonix LLC — FinIQ Financial Intelligence"],
+    ["Prepared by Modonix LLC  |  Confidential"],
+    [""],
+    ["KPI Trends Analysis"],
+    ["Selected KPIs: "+TR_SELECTED_KPIS.join(", ")],
+    ["Total Periods: "+HIST.length],
+    [""]
+  ];
   
   // Add header
   var header=["Period","Company"];
   TR_SELECTED_KPIS.forEach(function(kpi){header.push(kpi);});
   rows.push(header);
   
-  // Add data from history
+  // Add data from history (newest first)
   HIST.forEach(function(h){
     var row=[h.period,h.company||""];
     TR_SELECTED_KPIS.forEach(function(kpi){
-      var val=h.kpis[kpi];
+      var val=null;
+      if(kpi==="revenue"&&h.kpis.raw&&h.kpis.raw.revenue){
+        val=h.kpis.raw.revenue;
+      }else if(h.kpis[kpi]!=null){
+        val=h.kpis[kpi];
+      }
       row.push(val!=null?val:"N/A");
     });
     rows.push(row);
   });
   
   var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"]=header.map(function(){return{wch:18};});
+  
   XLSX.utils.book_append_sheet(wb,ws,"KPI Trends");
-  XLSX.writeFile(wb,"Modonix_FinIQ_Trends_"+new Date().toISOString().slice(0,10)+".xlsx");
+  
+  var filename="Modonix_FinIQ_Trends_"+TR_SELECTED_KPIS.join("_").substring(0,30)+"_"+new Date().toISOString().slice(0,10)+".xlsx";
+  XLSX.writeFile(wb,filename);
 }
 </script>
 </body>
