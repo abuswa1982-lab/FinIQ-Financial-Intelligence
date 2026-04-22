@@ -210,6 +210,23 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .crec-body{font-size:12px;color:var(--ink2);line-height:1.75;margin-bottom:8px}
 .crec-steps{background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.7;border-left:2px solid var(--accent)}
 .crec-steps strong{display:block;color:var(--ink);font-size:11px;margin-bottom:4px}
+/* ── TRENDS TAB STYLES ── */
+.ntab.trends-tab{color:#059669}
+.ntab.trends-tab.on{color:#059669;border-bottom-color:#059669}
+.tr-controls{background:var(--bg);border-radius:var(--rl);padding:16px 20px;margin-bottom:20px;border:1px solid var(--border)}
+.tr-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px}
+.tr-kpis{margin-bottom:16px}
+.tr-kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:8px}
+.tr-kpi-check{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;font-size:12px}
+.tr-kpi-check:hover{border-color:var(--accent);background:#f0f4ff}
+.tr-kpi-check.selected{border-color:#059669;background:#ecfdf5}
+.tr-kpi-check input[type="checkbox"]{margin:0;width:auto;accent-color:#059669}
+.tr-chart-area{background:var(--bg2);border-radius:var(--rl);padding:20px;margin-bottom:20px;border:1px solid var(--border);min-height:400px}
+.tr-chart-title{font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:16px;text-align:center}
+.tr-legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;justify-content:center}
+.tr-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2)}
+.tr-no-data{text-align:center;padding:60px 20px;color:var(--ink3)}
+.tr-no-data .ico{font-size:48px;margin-bottom:16px}
 </style>
 </head>
 <body>
@@ -531,7 +548,93 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
     </div>
   </div>
 </div>
+<!-- TRENDS TAB -->
+<div class="panel" id="p-trends">
+  <div class="dhdr">
+    <div>
+      <div class="dtitle">📈 KPI Trends</div>
+      <div class="dsub">Track KPI performance over time from your saved periods.</div>
+    </div>
+    <div class="exrow">
+      <button class="btnex" id="tr-export-btn" onclick="exportTrends()" style="display:none">Export to Excel</button>
+    </div>
+  </div>
 
+  <div class="tr-controls">
+    <div class="tr-filters">
+      <div>
+        <label class="lbl">Company</label>
+        <select id="tr-company" onchange="updateTrendData()">
+          <option value="">All companies</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">From Period</label>
+        <select id="tr-from" onchange="updateTrendData()">
+          <option value="">Earliest available</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">To Period</label>
+        <select id="tr-to" onchange="updateTrendData()">
+          <option value="">Latest available</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="tr-kpis">
+      <label class="lbl">Select KPIs to Chart (normalized to starting value = 100)</label>
+      <div class="tr-kpi-grid" id="tr-kpi-grid">
+        <label class="tr-kpi-check">
+          <input type="checkbox" value="grossMargin" onchange="onKPIChange()">
+          <span>Gross Margin %</span>
+        </label>
+        <label class="tr-kpi-check">
+          <input type="checkbox" value="netMargin" onchange="onKPIChange()">
+          <span>Net Margin %</span>
+        </label>
+        <label class="tr-kpi-check">
+          <input type="checkbox" value="currentRatio" onchange="onKPIChange()">
+          <span>Current Ratio</span>
+        </label>
+        <label class="tr-kpi-check">
+          <input type="checkbox" value="revenue" onchange="onKPIChange()">
+          <span>Revenue</span>
+        </label>
+        <label class="tr-kpi-check">
+          <input type="checkbox" value="workingCapital" onchange="onKPIChange()">
+          <span>Working Capital</span>
+        </label>
+        <label class="tr-kpi-check">
+          <input type="checkbox" value="roe" onchange="onKPIChange()">
+          <span>Return on Equity %</span>
+        </label>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btnrun" id="tr-generate" onclick="generateTrendChart()" disabled>Generate Trend Chart</button>
+      <button class="btnsm" onclick="selectAllKPIs()">Select All</button>
+      <button class="btnsm" onclick="clearKPISelection()">Clear All</button>
+    </div>
+  </div>
+
+  <div class="tr-chart-area" id="tr-chart-area">
+    <div class="tr-no-data" id="tr-no-data">
+      <div class="ico">📈</div>
+      <p>Select KPIs above, then hit Generate Trend Chart to see your performance over time.</p>
+    </div>
+    <div id="tr-chart-content" style="display:none">
+      <div class="tr-chart-title" id="tr-chart-title">KPI Trends</div>
+      <div class="tr-legend" id="tr-legend"></div>
+      <div class="tr-chart-container">
+        <div id="tr-chart-placeholder" style="height:320px;display:flex;align-items:center;justify-content:center;color:var(--ink3)">
+          Chart will display here with your trend data
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- HISTORY -->
 <div class="panel" id="p-history">
   <div class="dhdr">
@@ -1997,6 +2100,82 @@ function onInd(){IND=document.getElementById("industry").value;if(LAST){renderKP
 
 // Init
 renderHist();
+// ── TRENDS FUNCTIONS ──
+var TR_SELECTED_KPIS=[];
+
+function onKPIChange(){
+  var checkboxes=document.querySelectorAll('#tr-kpi-grid input[type="checkbox"]');
+  TR_SELECTED_KPIS=Array.from(checkboxes).filter(function(cb){return cb.checked;}).map(function(cb){return cb.value;});
+  
+  checkboxes.forEach(function(cb){
+    var parent=cb.closest('.tr-kpi-check');
+    if(parent)parent.classList.toggle('selected',cb.checked);
+  });
+  
+  var btn=document.getElementById("tr-generate");
+  btn.disabled=TR_SELECTED_KPIS.length===0;
+  btn.textContent=TR_SELECTED_KPIS.length>0?"Generate Trend Chart":"Select KPIs to generate chart";
+}
+
+function selectAllKPIs(){
+  var checkboxes=document.querySelectorAll('#tr-kpi-grid input[type="checkbox"]');
+  checkboxes.forEach(function(cb){cb.checked=true;});
+  onKPIChange();
+}
+
+function clearKPISelection(){
+  var checkboxes=document.querySelectorAll('#tr-kpi-grid input[type="checkbox"]');
+  checkboxes.forEach(function(cb){cb.checked=false;});
+  onKPIChange();
+}
+
+function updateTrendData(){
+  // Populate dropdowns from history
+  var companySelect=document.getElementById("tr-company");
+  var companies=[];
+  HIST.forEach(function(h){
+    if(h.company&&companies.indexOf(h.company)===-1)companies.push(h.company);
+  });
+  companySelect.innerHTML='<option value="">All companies</option>'+companies.map(function(c){return'<option value="'+c+'">'+c+'</option>';}).join("");
+}
+
+function generateTrendChart(){
+  if(TR_SELECTED_KPIS.length===0){
+    alert("Please select at least 1 KPI to chart.");
+    return;
+  }
+  
+  document.getElementById("tr-no-data").style.display="none";
+  document.getElementById("tr-chart-content").style.display="block";
+  document.getElementById("tr-export-btn").style.display="inline-block";
+  
+  // Show data from your saved periods
+  document.getElementById("tr-chart-placeholder").innerHTML="<strong>Trends for: "+TR_SELECTED_KPIS.join(", ")+"</strong><br>Based on "+HIST.length+" saved periods<br><em>Chart visualization ready for implementation</em>";
+}
+
+function exportTrends(){
+  var wb=XLSX.utils.book_new();
+  var rows=[["Modonix FinIQ - KPI Trends"],["Selected KPIs: "+TR_SELECTED_KPIS.join(", ")],["Total Periods: "+HIST.length],[""]];
+  
+  // Add header
+  var header=["Period","Company"];
+  TR_SELECTED_KPIS.forEach(function(kpi){header.push(kpi);});
+  rows.push(header);
+  
+  // Add data from history
+  HIST.forEach(function(h){
+    var row=[h.period,h.company||""];
+    TR_SELECTED_KPIS.forEach(function(kpi){
+      var val=h.kpis[kpi];
+      row.push(val!=null?val:"N/A");
+    });
+    rows.push(row);
+  });
+  
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb,ws,"KPI Trends");
+  XLSX.writeFile(wb,"Modonix_FinIQ_Trends_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
 </script>
 </body>
 </html>
