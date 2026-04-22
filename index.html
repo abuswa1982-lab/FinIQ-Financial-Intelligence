@@ -210,23 +210,6 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .crec-body{font-size:12px;color:var(--ink2);line-height:1.75;margin-bottom:8px}
 .crec-steps{background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.7;border-left:2px solid var(--accent)}
 .crec-steps strong{display:block;color:var(--ink);font-size:11px;margin-bottom:4px}
-/* ── TRENDS TAB STYLES ── */
-.ntab.trends-tab{color:#059669}
-.ntab.trends-tab.on{color:#059669;border-bottom-color:#059669}
-.tr-controls{background:var(--bg);border-radius:var(--rl);padding:16px 20px;margin-bottom:20px;border:1px solid var(--border)}
-.tr-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px}
-.tr-kpis{margin-bottom:16px}
-.tr-kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:8px}
-.tr-kpi-check{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;font-size:12px}
-.tr-kpi-check:hover{border-color:var(--accent);background:#f0f4ff}
-.tr-kpi-check.selected{border-color:#059669;background:#ecfdf5}
-.tr-kpi-check input[type="checkbox"]{margin:0;width:auto;accent-color:#059669}
-.tr-chart-area{background:var(--bg2);border-radius:var(--rl);padding:20px;margin-bottom:20px;border:1px solid var(--border);min-height:400px}
-.tr-chart-title{font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:16px;text-align:center}
-.tr-legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;justify-content:center}
-.tr-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2)}
-.tr-no-data{text-align:center;padding:60px 20px;color:var(--ink3)}
-.tr-no-data .ico{font-size:48px;margin-bottom:16px}
 </style>
 </head>
 <body>
@@ -256,7 +239,6 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <button class="ntab" onclick="sw('benchmark')">Benchmarks</button>
   <button class="ntab" onclick="sw('recommendations')">Recommendations</button>
   <button class="ntab cmp-tab" onclick="sw('compare')">⇄ Compare Periods</button>
-  <button class="ntab trends-tab" onclick="sw('trends')">📈 Trends</button>
   <button class="ntab" onclick="sw('history')">History</button>
 </div>
 
@@ -549,55 +531,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
     </div>
   </div>
 </div>
-<!-- TRENDS TAB -->
-<div class="tr-kpi-grid" id="tr-kpi-grid">
-  <label class="tr-kpi-check"><input type="checkbox" value="grossMargin" onchange="onKPIChange()"><span>Gross Margin %</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="netMargin" onchange="onKPIChange()"><span>Net Margin %</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="opMargin" onchange="onKPIChange()"><span>Operating Margin %</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="ebitdaMargin" onchange="onKPIChange()"><span>EBITDA Margin %</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="currentRatio" onchange="onKPIChange()"><span>Current Ratio</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="quickRatio" onchange="onKPIChange()"><span>Quick Ratio</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="workingCapital" onchange="onKPIChange()"><span>Working Capital</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="revenue" onchange="onKPIChange()"><span>Revenue</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="roe" onchange="onKPIChange()"><span>Return on Equity %</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="roa" onchange="onKPIChange()"><span>Return on Assets %</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="dso" onchange="onKPIChange()"><span>Days Sales Outstanding</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="inventoryTurnover" onchange="onKPIChange()"><span>Inventory Turnover</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="debtEquity" onchange="onKPIChange()"><span>Debt to Equity</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="debtAsset" onchange="onKPIChange()"><span>Debt to Assets</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="salesPerEmployee" onchange="onKPIChange()"><span>Sales per Employee</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="ocfVal" onchange="onKPIChange()"><span>Operating Cash Flow</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="freeCashFlow" onchange="onKPIChange()"><span>Free Cash Flow</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="contributionMargin" onchange="onKPIChange()"><span>Contribution Margin %</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="breakevenPct" onchange="onKPIChange()"><span>Break-even % Revenue</span></label>
-  <label class="tr-kpi-check"><input type="checkbox" value="totalAssetTurnover" onchange="onKPIChange()"><span>Total Asset Turnover</span></label>
-</div>
-    </div>
 
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btnrun" id="tr-generate" onclick="generateTrendChart()" disabled>Generate Trend Chart</button>
-      <button class="btnsm" onclick="selectAllKPIs()">Select All</button>
-      <button class="btnsm" onclick="clearKPISelection()">Clear All</button>
-    </div>
-  </div>
-
-  <div class="tr-chart-area" id="tr-chart-area">
-    <div class="tr-no-data" id="tr-no-data">
-      <div class="ico">📈</div>
-      <p>Select KPIs above, then hit Generate Trend Chart to see your performance over time.</p>
-    </div>
-    <div id="tr-chart-content" style="display:none">
-      <div class="tr-chart-title" id="tr-chart-title">KPI Trends</div>
-      <div class="tr-legend" id="tr-legend"></div>
-      <div class="tr-chart-container">
-        <svg id="tr-svg" width="100%" height="320" style="border:1px solid #e5e7eb"></svg>
-         <div id="tr-chart-placeholder" style="display:none;height:320px;display:flex;align-items:center;justify-content:center;color:var(--ink3)">
-          Chart will display here
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 <!-- HISTORY -->
 <div class="panel" id="p-history">
   <div class="dhdr">
@@ -2051,247 +1985,18 @@ function runAnalysis(){
 }
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
-var TABS=["import","kpis","analysis","benchmark","recommendations","compare","trends","history"];
+var TABS=["import","kpis","analysis","benchmark","recommendations","compare","history"];
 function sw(n){
   TABS.forEach(function(x,i){document.querySelectorAll(".ntab")[i].classList.remove("on");document.getElementById("p-"+x).classList.remove("on");});
   document.querySelectorAll(".ntab")[TABS.indexOf(n)].classList.add("on");
   document.getElementById("p-"+n).classList.add("on");
-  if(n==="trends")updateTrendData();
+  if(n==="history")renderHist();
   if(n==="compare")populateCmpSelects();
 }
 function onInd(){IND=document.getElementById("industry").value;if(LAST){renderKPIs(LAST);renderBM(LAST);document.getElementById("kpisub").textContent=LPER+" | "+B[IND].name;}}
 
 // Init
 renderHist();
-// ── TRENDS FUNCTIONS ──
-var TR_SELECTED_KPIS=[];
-
-function onKPIChange(){
-  var checkboxes=document.querySelectorAll('#tr-kpi-grid input[type="checkbox"]');
-  TR_SELECTED_KPIS=Array.from(checkboxes).filter(function(cb){return cb.checked;}).map(function(cb){return cb.value;});
-  
-  checkboxes.forEach(function(cb){
-    var parent=cb.closest('.tr-kpi-check');
-    if(parent)parent.classList.toggle('selected',cb.checked);
-  });
-  
-  var btn=document.getElementById("tr-generate");
-  if(btn){
-    btn.disabled=TR_SELECTED_KPIS.length===0;
-    btn.textContent=TR_SELECTED_KPIS.length>0?"Generate Trend Chart":"Select KPIs to generate chart";
-  }
-}
-
-function selectAllKPIs(){
-  var checkboxes=document.querySelectorAll('#tr-kpi-grid input[type="checkbox"]');
-  checkboxes.forEach(function(cb){cb.checked=true;});
-  onKPIChange();
-}
-
-function clearKPISelection(){
-  var checkboxes=document.querySelectorAll('#tr-kpi-grid input[type="checkbox"]');
-  checkboxes.forEach(function(cb){cb.checked=false;});
-  onKPIChange();
-}
-
-function updateTrendData(){
-  // Populate company dropdown
-  var companySelect=document.getElementById("tr-company");
-  if(companySelect){
-    var companies=[];
-    HIST.forEach(function(h){
-      if(h.company&&companies.indexOf(h.company)===-1)companies.push(h.company);
-    });
-    companySelect.innerHTML='<option value="">All companies</option>'+companies.map(function(c){return'<option value="'+c+'">'+c+'</option>';}).join("");
-  }
-  
-  // Populate period dropdowns
-  var fromSelect=document.getElementById("tr-from");
-  var toSelect=document.getElementById("tr-to");
-  if(fromSelect&&toSelect){
-    var periodOpts='';
-    HIST.forEach(function(h,i){
-      periodOpts+='<option value="'+i+'">'+h.period+' ('+h.company+')</option>';
-    });
-    fromSelect.innerHTML='<option value="">Earliest available</option>'+periodOpts;
-    toSelect.innerHTML='<option value="">Latest available</option>'+periodOpts;
-  }
-}
-
-function generateTrendChart(){
-  if(TR_SELECTED_KPIS.length===0){
-    alert("Please select at least 1 KPI to chart.");
-    return;
-  }
-  
-  if(HIST.length<2){
-    alert("Need at least 2 saved periods to show trends.");
-    return;
-  }
-  
-  document.getElementById("tr-no-data").style.display="none";
-  document.getElementById("tr-chart-content").style.display="block";
-  document.getElementById("tr-export-btn").style.display="inline-block";
-  
-  // Get filtered data based on selections
-  var filteredData=getFilteredHistoryData();
-  
-  // Draw actual chart
-  drawTrendChart(filteredData);
-}
-
-function getFilteredHistoryData(){
-  var companyFilter=document.getElementById("tr-company").value;
-  var fromIdx=document.getElementById("tr-from").value;
-  var toIdx=document.getElementById("tr-to").value;
-  
-  var filtered=HIST.filter(function(h){
-    if(companyFilter&&h.company!==companyFilter)return false;
-    return true;
-  });
-  
-  // Apply date range if specified
-  if(fromIdx!==""&&toIdx!==""){
-    var start=Math.min(parseInt(fromIdx),parseInt(toIdx));
-    var end=Math.max(parseInt(fromIdx),parseInt(toIdx));
-    filtered=HIST.slice(start,end+1);
-  }
-  
-  return filtered.reverse(); // Oldest first for charting
-}
-
-function drawTrendChart(data){
-  var svg=document.getElementById("tr-svg");
-  var width=800;
-  var height=320;
-  var margin={top:20,right:60,bottom:60,left:80};
-  var chartWidth=width-margin.left-margin.right;
-  var chartHeight=height-margin.top-margin.bottom;
-  
-  svg.innerHTML="";
-  svg.setAttribute("viewBox","0 0 "+width+" "+height);
-  
-  if(data.length<2){
-    svg.innerHTML='<text x="400" y="160" text-anchor="middle" fill="#999" font-size="16">Need at least 2 periods to show trends</text>';
-    return;
-  }
-  
-  // Colors for lines
-  var colors=["#059669","#1a5cff","#b45309","#c0392b","#7c3aed","#f97316"];
-  
-  // Chart background
-  var bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
-  bg.setAttribute("x",margin.left);
-  bg.setAttribute("y",margin.top);
-  bg.setAttribute("width",chartWidth);
-  bg.setAttribute("height",chartHeight);
-  bg.setAttribute("fill","#fafafa");
-  bg.setAttribute("stroke","#e5e7eb");
-  svg.appendChild(bg);
-  
-  // Draw grid lines
-  for(var i=0;i<=5;i++){
-    var y=margin.top+(i/5)*chartHeight;
-    var gridLine=document.createElementNS("http://www.w3.org/2000/svg","line");
-    gridLine.setAttribute("x1",margin.left);
-    gridLine.setAttribute("y1",y);
-    gridLine.setAttribute("x2",margin.left+chartWidth);
-    gridLine.setAttribute("y2",y);
-    gridLine.setAttribute("stroke","#e5e7eb");
-    gridLine.setAttribute("stroke-width","1");
-    svg.appendChild(gridLine);
-  }
-  
-  // Draw trend lines for each selected KPI
-  TR_SELECTED_KPIS.forEach(function(kpi,kpiIdx){
-    var kpiData=[];
-    var baseValue=null;
-    
-    data.forEach(function(period,periodIdx){
-      var value=getKPIValue(period.kpis,kpi);
-      if(value!=null){
-        if(baseValue===null)baseValue=value;
-        var normalizedValue=(value/baseValue)*100;
-        kpiData.push({x:periodIdx,y:normalizedValue,raw:value,period:period.period});
-      }
-    });
-    
-    if(kpiData.length<2)return;
-    
-    var color=colors[kpiIdx%colors.length];
-    
-    // Draw line
-    var pathData="M";
-    kpiData.forEach(function(point,idx){
-      var x=margin.left+(point.x/(data.length-1))*chartWidth;
-      var y=margin.top+chartHeight-((point.y-50)/100)*chartHeight; // Scale around 100
-      pathData+=(idx===0?"":"L")+x+","+y;
-    });
-    
-    var path=document.createElementNS("http://www.w3.org/2000/svg","path");
-    path.setAttribute("d",pathData);
-    path.setAttribute("stroke",color);
-    path.setAttribute("stroke-width","3");
-    path.setAttribute("fill","none");
-    svg.appendChild(path);
-    
-    // Draw points
-    kpiData.forEach(function(point){
-      var x=margin.left+(point.x/(data.length-1))*chartWidth;
-      var y=margin.top+chartHeight-((point.y-50)/100)*chartHeight;
-      
-      var circle=document.createElementNS("http://www.w3.org/2000/svg","circle");
-      circle.setAttribute("cx",x);
-      circle.setAttribute("cy",y);
-      circle.setAttribute("r","4");
-      circle.setAttribute("fill",color);
-      circle.setAttribute("stroke","white");
-      circle.setAttribute("stroke-width","2");
-      svg.appendChild(circle);
-    });
-  });
-  
-  // Add baseline at 100
-  var baselineY=margin.top+chartHeight-((100-50)/100)*chartHeight;
-  var baseline=document.createElementNS("http://www.w3.org/2000/svg","line");
-  baseline.setAttribute("x1",margin.left);
-  baseline.setAttribute("y1",baselineY);
-  baseline.setAttribute("x2",margin.left+chartWidth);
-  baseline.setAttribute("y2",baselineY);
-  baseline.setAttribute("stroke","#059669");
-  baseline.setAttribute("stroke-width","2");
-  baseline.setAttribute("stroke-dasharray","5,5");
-  svg.appendChild(baseline);
-  
-  // Add period labels on X axis
-  data.forEach(function(period,idx){
-    if(idx%Math.max(1,Math.floor(data.length/6))===0){
-      var x=margin.left+(idx/(data.length-1))*chartWidth;
-      var label=document.createElementNS("http://www.w3.org/2000/svg","text");
-      label.setAttribute("x",x);
-      label.setAttribute("y",height-20);
-      label.setAttribute("text-anchor","middle");
-      label.setAttribute("font-size","11");
-      label.setAttribute("fill","#666");
-      label.textContent=period.period;
-      svg.appendChild(label);
-    }
-  });
-  
-  // Update legend
-  var legend=document.getElementById("tr-legend");
-  if(legend){
-    legend.innerHTML=TR_SELECTED_KPIS.map(function(kpi,idx){
-      var color=colors[idx%colors.length];
-      return'<div class="tr-legend-item"><div class="tr-legend-dot" style="background:'+color+'"></div><span>'+kpi+'</span></div>';
-    }).join("");
-  }
-}
-
-function getKPIValue(kpis,kpiKey){
-  if(kpiKey==="revenue"&&kpis.raw&&kpis.raw.revenue)return kpis.raw.revenue;
-  return kpis[kpiKey];
-}
 </script>
 </body>
 </html>
