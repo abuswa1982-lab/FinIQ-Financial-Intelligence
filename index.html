@@ -550,67 +550,28 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   </div>
 </div>
 <!-- TRENDS TAB -->
-<div class="panel" id="p-trends">
-  <div class="dhdr">
-    <div>
-      <div class="dtitle">📈 KPI Trends</div>
-      <div class="dsub">Track KPI performance over time from your saved periods.</div>
-    </div>
-    <div class="exrow">
-      <button class="btnex" id="tr-export-btn" onclick="exportTrends()" style="display:none">Export to Excel</button>
-    </div>
-  </div>
-
-  <div class="tr-controls">
-    <div class="tr-filters">
-      <div>
-        <label class="lbl">Company</label>
-        <select id="tr-company" onchange="updateTrendData()">
-          <option value="">All companies</option>
-        </select>
-      </div>
-      <div>
-        <label class="lbl">From Period</label>
-        <select id="tr-from" onchange="updateTrendData()">
-          <option value="">Earliest available</option>
-        </select>
-      </div>
-      <div>
-        <label class="lbl">To Period</label>
-        <select id="tr-to" onchange="updateTrendData()">
-          <option value="">Latest available</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="tr-kpis">
-      <label class="lbl">Select KPIs to Chart (normalized to starting value = 100)</label>
-      <div class="tr-kpi-grid" id="tr-kpi-grid">
-        <label class="tr-kpi-check">
-          <input type="checkbox" value="grossMargin" onchange="onKPIChange()">
-          <span>Gross Margin %</span>
-        </label>
-        <label class="tr-kpi-check">
-          <input type="checkbox" value="netMargin" onchange="onKPIChange()">
-          <span>Net Margin %</span>
-        </label>
-        <label class="tr-kpi-check">
-          <input type="checkbox" value="currentRatio" onchange="onKPIChange()">
-          <span>Current Ratio</span>
-        </label>
-        <label class="tr-kpi-check">
-          <input type="checkbox" value="revenue" onchange="onKPIChange()">
-          <span>Revenue</span>
-        </label>
-        <label class="tr-kpi-check">
-          <input type="checkbox" value="workingCapital" onchange="onKPIChange()">
-          <span>Working Capital</span>
-        </label>
-        <label class="tr-kpi-check">
-          <input type="checkbox" value="roe" onchange="onKPIChange()">
-          <span>Return on Equity %</span>
-        </label>
-      </div>
+<div class="tr-kpi-grid" id="tr-kpi-grid">
+  <label class="tr-kpi-check"><input type="checkbox" value="grossMargin" onchange="onKPIChange()"><span>Gross Margin %</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="netMargin" onchange="onKPIChange()"><span>Net Margin %</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="opMargin" onchange="onKPIChange()"><span>Operating Margin %</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="ebitdaMargin" onchange="onKPIChange()"><span>EBITDA Margin %</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="currentRatio" onchange="onKPIChange()"><span>Current Ratio</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="quickRatio" onchange="onKPIChange()"><span>Quick Ratio</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="workingCapital" onchange="onKPIChange()"><span>Working Capital</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="revenue" onchange="onKPIChange()"><span>Revenue</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="roe" onchange="onKPIChange()"><span>Return on Equity %</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="roa" onchange="onKPIChange()"><span>Return on Assets %</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="dso" onchange="onKPIChange()"><span>Days Sales Outstanding</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="inventoryTurnover" onchange="onKPIChange()"><span>Inventory Turnover</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="debtEquity" onchange="onKPIChange()"><span>Debt to Equity</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="debtAsset" onchange="onKPIChange()"><span>Debt to Assets</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="salesPerEmployee" onchange="onKPIChange()"><span>Sales per Employee</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="ocfVal" onchange="onKPIChange()"><span>Operating Cash Flow</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="freeCashFlow" onchange="onKPIChange()"><span>Free Cash Flow</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="contributionMargin" onchange="onKPIChange()"><span>Contribution Margin %</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="breakevenPct" onchange="onKPIChange()"><span>Break-even % Revenue</span></label>
+  <label class="tr-kpi-check"><input type="checkbox" value="totalAssetTurnover" onchange="onKPIChange()"><span>Total Asset Turnover</span></label>
+</div>
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -629,8 +590,9 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
       <div class="tr-chart-title" id="tr-chart-title">KPI Trends</div>
       <div class="tr-legend" id="tr-legend"></div>
       <div class="tr-chart-container">
-        <div id="tr-chart-placeholder" style="height:320px;display:flex;align-items:center;justify-content:center;color:var(--ink3)">
-          Chart will display here with your trend data
+        <svg id="tr-svg" width="100%" height="320" style="border:1px solid #e5e7eb"></svg>
+         <div id="tr-chart-placeholder" style="display:none;height:320px;display:flex;align-items:center;justify-content:center;color:var(--ink3)">
+          Chart will display here
         </div>
       </div>
     </div>
@@ -2163,7 +2125,7 @@ function generateTrendChart(){
   }
   
   if(HIST.length<2){
-    alert("Need at least 2 saved periods to show trends. Import more periods first.");
+    alert("Need at least 2 saved periods to show trends.");
     return;
   }
   
@@ -2171,73 +2133,164 @@ function generateTrendChart(){
   document.getElementById("tr-chart-content").style.display="block";
   document.getElementById("tr-export-btn").style.display="inline-block";
   
-  // Create the chart placeholder if it doesn't exist
-  var chartContainer=document.getElementById("tr-chart-container");
-  if(!chartContainer){
-    chartContainer=document.querySelector(".tr-chart-container");
-  }
+  // Get filtered data based on selections
+  var filteredData=getFilteredHistoryData();
   
-  if(chartContainer){
-    chartContainer.innerHTML='<div style="height:320px;display:flex;align-items:center;justify-content:center;color:var(--ink2);text-align:center;flex-direction:column">'+
-      '<strong style="font-size:16px;margin-bottom:10px">KPI Trends: '+TR_SELECTED_KPIS.join(", ")+'</strong>'+
-      '<div>Data from '+HIST.length+' saved periods</div>'+
-      '<div style="margin-top:20px;padding:20px;background:#e6f4ed;border-radius:8px;max-width:400px">'+
-      '<div style="color:#059669;font-weight:700">✓ Excel Export Ready</div>'+
-      '<div style="font-size:12px;margin-top:5px">Click "Export to Excel" to download your trend data</div>'+
-      '</div></div>';
-  }
-  
-  // Update title
-  var titleEl=document.getElementById("tr-chart-title");
-  if(titleEl){
-    titleEl.textContent="KPI Trends - "+TR_SELECTED_KPIS.length+" metrics selected";
-  }
+  // Draw actual chart
+  drawTrendChart(filteredData);
 }
 
-function exportTrends(){
-  if(TR_SELECTED_KPIS.length===0){
-    alert("Please select KPIs first, then generate the chart.");
+function getFilteredHistoryData(){
+  var companyFilter=document.getElementById("tr-company").value;
+  var fromIdx=document.getElementById("tr-from").value;
+  var toIdx=document.getElementById("tr-to").value;
+  
+  var filtered=HIST.filter(function(h){
+    if(companyFilter&&h.company!==companyFilter)return false;
+    return true;
+  });
+  
+  // Apply date range if specified
+  if(fromIdx!==""&&toIdx!==""){
+    var start=Math.min(parseInt(fromIdx),parseInt(toIdx));
+    var end=Math.max(parseInt(fromIdx),parseInt(toIdx));
+    filtered=HIST.slice(start,end+1);
+  }
+  
+  return filtered.reverse(); // Oldest first for charting
+}
+
+function drawTrendChart(data){
+  var svg=document.getElementById("tr-svg");
+  var width=800;
+  var height=320;
+  var margin={top:20,right:60,bottom:60,left:80};
+  var chartWidth=width-margin.left-margin.right;
+  var chartHeight=height-margin.top-margin.bottom;
+  
+  svg.innerHTML="";
+  svg.setAttribute("viewBox","0 0 "+width+" "+height);
+  
+  if(data.length<2){
+    svg.innerHTML='<text x="400" y="160" text-anchor="middle" fill="#999" font-size="16">Need at least 2 periods to show trends</text>';
     return;
   }
   
-  var wb=XLSX.utils.book_new();
-  var rows=[
-    ["Modonix LLC — FinIQ Financial Intelligence"],
-    ["Prepared by Modonix LLC  |  Confidential"],
-    [""],
-    ["KPI Trends Analysis"],
-    ["Selected KPIs: "+TR_SELECTED_KPIS.join(", ")],
-    ["Total Periods: "+HIST.length],
-    [""]
-  ];
+  // Colors for lines
+  var colors=["#059669","#1a5cff","#b45309","#c0392b","#7c3aed","#f97316"];
   
-  // Add header
-  var header=["Period","Company"];
-  TR_SELECTED_KPIS.forEach(function(kpi){header.push(kpi);});
-  rows.push(header);
+  // Chart background
+  var bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
+  bg.setAttribute("x",margin.left);
+  bg.setAttribute("y",margin.top);
+  bg.setAttribute("width",chartWidth);
+  bg.setAttribute("height",chartHeight);
+  bg.setAttribute("fill","#fafafa");
+  bg.setAttribute("stroke","#e5e7eb");
+  svg.appendChild(bg);
   
-  // Add data from history (newest first)
-  HIST.forEach(function(h){
-    var row=[h.period,h.company||""];
-    TR_SELECTED_KPIS.forEach(function(kpi){
-      var val=null;
-      if(kpi==="revenue"&&h.kpis.raw&&h.kpis.raw.revenue){
-        val=h.kpis.raw.revenue;
-      }else if(h.kpis[kpi]!=null){
-        val=h.kpis[kpi];
+  // Draw grid lines
+  for(var i=0;i<=5;i++){
+    var y=margin.top+(i/5)*chartHeight;
+    var gridLine=document.createElementNS("http://www.w3.org/2000/svg","line");
+    gridLine.setAttribute("x1",margin.left);
+    gridLine.setAttribute("y1",y);
+    gridLine.setAttribute("x2",margin.left+chartWidth);
+    gridLine.setAttribute("y2",y);
+    gridLine.setAttribute("stroke","#e5e7eb");
+    gridLine.setAttribute("stroke-width","1");
+    svg.appendChild(gridLine);
+  }
+  
+  // Draw trend lines for each selected KPI
+  TR_SELECTED_KPIS.forEach(function(kpi,kpiIdx){
+    var kpiData=[];
+    var baseValue=null;
+    
+    data.forEach(function(period,periodIdx){
+      var value=getKPIValue(period.kpis,kpi);
+      if(value!=null){
+        if(baseValue===null)baseValue=value;
+        var normalizedValue=(value/baseValue)*100;
+        kpiData.push({x:periodIdx,y:normalizedValue,raw:value,period:period.period});
       }
-      row.push(val!=null?val:"N/A");
     });
-    rows.push(row);
+    
+    if(kpiData.length<2)return;
+    
+    var color=colors[kpiIdx%colors.length];
+    
+    // Draw line
+    var pathData="M";
+    kpiData.forEach(function(point,idx){
+      var x=margin.left+(point.x/(data.length-1))*chartWidth;
+      var y=margin.top+chartHeight-((point.y-50)/100)*chartHeight; // Scale around 100
+      pathData+=(idx===0?"":"L")+x+","+y;
+    });
+    
+    var path=document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d",pathData);
+    path.setAttribute("stroke",color);
+    path.setAttribute("stroke-width","3");
+    path.setAttribute("fill","none");
+    svg.appendChild(path);
+    
+    // Draw points
+    kpiData.forEach(function(point){
+      var x=margin.left+(point.x/(data.length-1))*chartWidth;
+      var y=margin.top+chartHeight-((point.y-50)/100)*chartHeight;
+      
+      var circle=document.createElementNS("http://www.w3.org/2000/svg","circle");
+      circle.setAttribute("cx",x);
+      circle.setAttribute("cy",y);
+      circle.setAttribute("r","4");
+      circle.setAttribute("fill",color);
+      circle.setAttribute("stroke","white");
+      circle.setAttribute("stroke-width","2");
+      svg.appendChild(circle);
+    });
   });
   
-  var ws=XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"]=header.map(function(){return{wch:18};});
+  // Add baseline at 100
+  var baselineY=margin.top+chartHeight-((100-50)/100)*chartHeight;
+  var baseline=document.createElementNS("http://www.w3.org/2000/svg","line");
+  baseline.setAttribute("x1",margin.left);
+  baseline.setAttribute("y1",baselineY);
+  baseline.setAttribute("x2",margin.left+chartWidth);
+  baseline.setAttribute("y2",baselineY);
+  baseline.setAttribute("stroke","#059669");
+  baseline.setAttribute("stroke-width","2");
+  baseline.setAttribute("stroke-dasharray","5,5");
+  svg.appendChild(baseline);
   
-  XLSX.utils.book_append_sheet(wb,ws,"KPI Trends");
+  // Add period labels on X axis
+  data.forEach(function(period,idx){
+    if(idx%Math.max(1,Math.floor(data.length/6))===0){
+      var x=margin.left+(idx/(data.length-1))*chartWidth;
+      var label=document.createElementNS("http://www.w3.org/2000/svg","text");
+      label.setAttribute("x",x);
+      label.setAttribute("y",height-20);
+      label.setAttribute("text-anchor","middle");
+      label.setAttribute("font-size","11");
+      label.setAttribute("fill","#666");
+      label.textContent=period.period;
+      svg.appendChild(label);
+    }
+  });
   
-  var filename="Modonix_FinIQ_Trends_"+TR_SELECTED_KPIS.join("_").substring(0,30)+"_"+new Date().toISOString().slice(0,10)+".xlsx";
-  XLSX.writeFile(wb,filename);
+  // Update legend
+  var legend=document.getElementById("tr-legend");
+  if(legend){
+    legend.innerHTML=TR_SELECTED_KPIS.map(function(kpi,idx){
+      var color=colors[idx%colors.length];
+      return'<div class="tr-legend-item"><div class="tr-legend-dot" style="background:'+color+'"></div><span>'+kpi+'</span></div>';
+    }).join("");
+  }
+}
+
+function getKPIValue(kpis,kpiKey){
+  if(kpiKey==="revenue"&&kpis.raw&&kpis.raw.revenue)return kpis.raw.revenue;
+  return kpis[kpiKey];
 }
 </script>
 </body>
