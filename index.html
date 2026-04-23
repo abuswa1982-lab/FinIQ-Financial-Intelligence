@@ -58,6 +58,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 /* Comparison tab gets a distinct accent */
 .ntab.cmp-tab{color:#7c3aed}
 .ntab.cmp-tab.on{color:#7c3aed;border-bottom-color:#7c3aed}
+/* Trends tab gets green accent */
+.ntab.trends-tab{color:#059669}
+.ntab.trends-tab.on{color:#059669;border-bottom-color:#059669}
 .panel{display:none;padding:22px;background:var(--bg2);min-height:400px}.panel.on{display:block}
 .lbl{font-size:11px;font-weight:600;color:var(--ink3);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
 input,select{font-size:13px;font-family:inherit;border:1px solid var(--border);border-radius:8px;padding:9px 11px;background:var(--bg2);color:var(--ink);width:100%;transition:border-color .15s}
@@ -239,6 +242,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <button class="ntab" onclick="sw('benchmark')">Benchmarks</button>
   <button class="ntab" onclick="sw('recommendations')">Recommendations</button>
   <button class="ntab cmp-tab" onclick="sw('compare')">⇄ Compare Periods</button>
+  <button class="ntab trends-tab" onclick="sw('trends')">📈 Trends</button>
   <button class="ntab" onclick="sw('history')">History</button>
 </div>
 
@@ -1985,7 +1989,7 @@ function runAnalysis(){
 }
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
-var TABS=["import","kpis","analysis","benchmark","recommendations","compare","history"];
+var TABS=["import","kpis","analysis","benchmark","recommendations","compare","trends","history"];
 function sw(n){
   TABS.forEach(function(x,i){document.querySelectorAll(".ntab")[i].classList.remove("on");document.getElementById("p-"+x).classList.remove("on");});
   document.querySelectorAll(".ntab")[TABS.indexOf(n)].classList.add("on");
