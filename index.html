@@ -50,6 +50,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .hdr-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .isel{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;min-width:200px;font-family:inherit}
 .isel option{background:#1a1d27;color:#fff}
+.isel:disabled{opacity:.45;cursor:not-allowed}
 .ptag{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 12px;font-size:12px;color:rgba(255,255,255,.7)}
 .nav{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 18px;overflow-x:auto}
 .ntab{padding:12px 14px;font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;transition:all .15s}
@@ -217,6 +218,15 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 <div class="hdr">
   <div class="logo">Fin<em>IQ</em> &mdash; Financial Intelligence</div>
   <div class="hdr-r">
+    <select class="isel" id="hdrCompany" onchange="onHeaderCompany()" style="min-width:150px">
+      <option value="">All companies</option>
+    </select>
+    <select class="isel" id="hdrFrom" onchange="onHeaderRange()" style="min-width:120px" disabled title="Range start month">
+      <option value="">From</option>
+    </select>
+    <select class="isel" id="hdrTo" onchange="onHeaderRange()" style="min-width:120px" disabled title="Range end month">
+      <option value="">To</option>
+    </select>
     <select class="isel" id="industry" onchange="onInd()">
       <option value="ecommerce">E-commerce / Online Retail</option>
       <option value="retail">Brick &amp; Mortar Retail</option>
@@ -246,7 +256,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 <div class="panel on" id="p-import">
   <div class="tip">Export from QuickBooks Online: Reports &rarr; Profit and Loss / Balance Sheet / Statement of Cash Flows &rarr; Export &rarr; Excel or CSV. Upload each file below.</div>
   <div class="g4">
-    <div><label class="lbl">Company / Client name</label><input type="text" id="coname" placeholder="Acme Store LLC"></div>
+    <div><label class="lbl">Company / Client name</label><input type="text" id="coname" placeholder="Acme Store LLC" list="company-list"><datalist id="company-list"></datalist></div>
     <div><label class="lbl">Number of Employees</label><input type="number" id="emp" value="1" min="1" placeholder="e.g. 5" style="border:2px solid var(--warn)"></div>
     <div></div><div></div>
   </div>
@@ -394,22 +404,32 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 
     <!-- Load from history -->
     <div id="cmp-hist-section" style="margin-bottom:20px;display:none">
-      <div class="stitle">Select from saved history</div>
-      <div class="g2" style="margin-bottom:10px">
-        <div>
-          <label class="lbl" style="color:#1a56db">Period A (baseline)</label>
-          <select id="cmp-sel-a" style="border:2px solid #1a56db">
-            <option value="">— select a period —</option>
-          </select>
+      <div class="stitle">Compare two ranges from saved history</div>
+      <div class="cmp-split" style="margin-bottom:10px">
+        <div class="cmp-col">
+          <div class="cmp-col-hdr period-a">Period A &mdash; Baseline</div>
+          <div style="margin-bottom:10px">
+            <label class="lbl">Company</label>
+            <select id="cmp-co-a" style="border:2px solid #1a56db" onchange="onCmpCompany('a')"></select>
+          </div>
+          <div class="g2" style="margin-bottom:0">
+            <div><label class="lbl">From month</label><select id="cmp-from-a" style="border:2px solid #1a56db"></select></div>
+            <div><label class="lbl">To month</label><select id="cmp-to-a" style="border:2px solid #1a56db"></select></div>
+          </div>
         </div>
-        <div>
-          <label class="lbl" style="color:#b45309">Period B (comparison)</label>
-          <select id="cmp-sel-b" style="border:2px solid #b45309">
-            <option value="">— select a period —</option>
-          </select>
+        <div class="cmp-col">
+          <div class="cmp-col-hdr period-b">Period B &mdash; Comparison</div>
+          <div style="margin-bottom:10px">
+            <label class="lbl">Company</label>
+            <select id="cmp-co-b" style="border:2px solid #b45309" onchange="onCmpCompany('b')"></select>
+          </div>
+          <div class="g2" style="margin-bottom:0">
+            <div><label class="lbl">From month</label><select id="cmp-from-b" style="border:2px solid #b45309"></select></div>
+            <div><label class="lbl">To month</label><select id="cmp-to-b" style="border:2px solid #b45309"></select></div>
+          </div>
         </div>
       </div>
-      <button class="btnrun" style="margin-top:0;max-width:320px" onclick="runFromHistory()">Compare Selected Periods</button>
+      <button class="btnrun" style="margin-top:0;max-width:320px" onclick="runFromHistory()">Compare Selected Ranges</button>
     </div>
 
     <div class="or-row" id="cmp-or" style="display:none">
@@ -541,6 +561,18 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <div id="hist-empty" class="empty"><div class="ico">&#128197;</div><p>No history yet. Every period you analyze is saved here automatically.</p></div>
   <div id="histlist"></div>
   <div id="histtrend"></div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="cf-modal" style="display:none;position:fixed;inset:0;background:rgba(15,17,23,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border-radius:var(--rl);max-width:380px;width:90%;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.3)">
+    <div id="cf-modal-title" style="font-size:15px;font-weight:700;margin-bottom:8px">Are you sure?</div>
+    <div id="cf-modal-msg" style="font-size:13px;color:var(--ink2);line-height:1.6;margin-bottom:18px">This action cannot be undone.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btnsm" onclick="cfModalClose(false)">Cancel</button>
+      <button class="btnex" id="cf-modal-ok" style="background:#c0392b" onclick="cfModalClose(true)">Delete</button>
+    </div>
+  </div>
 </div>
 
 </div>
@@ -1083,7 +1115,6 @@ function renderComparison(rA,rB,labelA,labelB){
       '</div>';
     }).join("");
     return'<div class="crec-card '+rec.cat+'" style="margin-bottom:10px">'+
-      // ── Clickable header ──
       '<div onclick="toggleCmpCard(\''+id+'\')" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:2px 0 6px">'+
         '<div style="flex:1">'+
           '<div class="crec-head" style="margin-bottom:6px">'+
@@ -1100,7 +1131,6 @@ function renderComparison(rA,rB,labelA,labelB){
         '</div>'+
         '<span id="'+id+'-arrow" style="font-size:18px;color:var(--ink3);flex-shrink:0;margin-top:2px;transition:transform .2s">▸</span>'+
       '</div>'+
-      // ── Expandable body ──
       '<div id="'+id+'" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">'+
         '<div style="font-size:12px;color:var(--ink3);line-height:1.7;margin-bottom:10px">'+advice.context+'</div>'+
         '<div class="crec-steps">'+
@@ -1182,23 +1212,73 @@ function getCmpAdvice(rec,lA,lB){
 
 // ── COMPARISON: FROM HISTORY ──────────────────────────────────────────────────
 function populateCmpSelects(){
-  if(!HIST.length){document.getElementById("cmp-hist-section").style.display="none";document.getElementById("cmp-or").style.display="none";return;}
+  var companies=getCompanies();
+  if(!companies.length){document.getElementById("cmp-hist-section").style.display="none";document.getElementById("cmp-or").style.display="none";return;}
   document.getElementById("cmp-hist-section").style.display="block";
   document.getElementById("cmp-or").style.display="flex";
-  var opts=HIST.map(function(h,i){return'<option value="'+i+'">'+h.period+' — '+h.company+'</option>';}).join("");
-  document.getElementById("cmp-sel-a").innerHTML='<option value="">— select Period A —</option>'+opts;
-  document.getElementById("cmp-sel-b").innerHTML='<option value="">— select Period B —</option>'+opts;
-  if(HIST.length>=2){document.getElementById("cmp-sel-a").value="1";document.getElementById("cmp-sel-b").value="0";}
+  var coOpts='<option value="">— select company —</option>'+
+    companies.map(function(c){return'<option value="'+escA(c)+'">'+escH(c)+'</option>';}).join("");
+  ["a","b"].forEach(function(side){
+    var sel=document.getElementById("cmp-co-"+side);
+    var keep=sel.value;
+    sel.innerHTML=coOpts;
+    if(keep&&companies.indexOf(keep)>=0)sel.value=keep;
+  });
+  // sensible default: same company both sides if only one exists
+  if(companies.length===1){
+    document.getElementById("cmp-co-a").value=companies[0];
+    document.getElementById("cmp-co-b").value=companies[0];
+  }
+  onCmpCompany("a");onCmpCompany("b");
+}
+// Fill the From/To month dropdowns for one Compare side
+function onCmpCompany(side){
+  var co=document.getElementById("cmp-co-"+side).value;
+  var fSel=document.getElementById("cmp-from-"+side),tSel=document.getElementById("cmp-to-"+side);
+  if(!co){fSel.innerHTML='<option value="">—</option>';tSel.innerHTML='<option value="">—</option>';return;}
+  var months=getMonthRecords(co);
+  var others=getRecordsForCompany(co).filter(function(h){return deriveMonthKey(h)==null;});
+  if(!months.length&&!others.length){fSel.innerHTML='<option value="">—</option>';tSel.innerHTML='<option value="">—</option>';return;}
+  var monthOpts=months.map(function(h){return'<option value="'+deriveMonthKey(h)+'">'+escH(h.period)+'</option>';}).join("");
+  var otherOpts=others.map(function(h){return'<option value="rec:'+h.id+'">'+escH(h.period)+'</option>';}).join("");
+  fSel.innerHTML=monthOpts+otherOpts;
+  tSel.innerHTML=monthOpts+otherOpts;
+  if(months.length){
+    fSel.value=deriveMonthKey(months[0]);
+    tSel.value=deriveMonthKey(months[months.length-1]);
+  }else if(others.length){
+    fSel.value="rec:"+others[0].id;tSel.value="rec:"+others[0].id;
+  }
+}
+// Resolve one Compare side into {kpis,label} from its company + range pickers
+function resolveCmpSide(side){
+  var co=document.getElementById("cmp-co-"+side).value;
+  if(!co)return null;
+  var fv=document.getElementById("cmp-from-"+side).value;
+  var tv=document.getElementById("cmp-to-"+side).value;
+  if(!fv||!tv)return null;
+  if(fv.indexOf("rec:")===0||tv.indexOf("rec:")===0){
+    var id=(fv.indexOf("rec:")===0?fv:tv).slice(4);
+    var h=null;
+    for(var i=0;i<HIST.length;i++){if(String(HIST[i].id)===String(id)){h=HIST[i];break;}}
+    if(!h)return null;
+    return{kpis:h.kpis,label:h.period+" ("+co+")"};
+  }
+  var fromKey=parseInt(fv),toKey=parseInt(tv);
+  if(fromKey>toKey){var t=fromKey;fromKey=toKey;toKey=t;}
+  var recs=recordsInWindow(co,fromKey,toKey);
+  if(!recs.length)return null;
+  var combo=combineRange(recs);
+  return{kpis:combo.kpis,label:combo.label+" ("+co+")"};
 }
 
 function runFromHistory(){
-  var ia=parseInt(document.getElementById("cmp-sel-a").value);
-  var ib=parseInt(document.getElementById("cmp-sel-b").value);
-  if(isNaN(ia)||isNaN(ib)){document.getElementById("cmperr").innerHTML='<div class="errmsg">Please select both periods.</div>';return;}
-  if(ia===ib){document.getElementById("cmperr").innerHTML='<div class="errmsg">Please select two different periods.</div>';return;}
+  var sideA=resolveCmpSide("a");
+  var sideB=resolveCmpSide("b");
+  if(!sideA||!sideB){document.getElementById("cmperr").innerHTML='<div class="errmsg">Please pick a company and a month range for both Period A and Period B.</div>';return;}
   document.getElementById("cmperr").innerHTML="";
-  var hA=HIST[ia],hB=HIST[ib];
-  renderComparison(hA.kpis,hB.kpis,hA.period+" ("+hA.company+")",hB.period+" ("+hB.company+")");
+  // industry follows Period B's company for benchmark status in the table
+  renderComparison(sideA.kpis,sideB.kpis,sideA.label,sideB.label);
 }
 
 function runComparison(){
@@ -1853,9 +1933,12 @@ function exportComparisonRecsPDF(){
 function kpiRows(r,ind){var b=B[ind];return[["Gross Margin (%)",r.grossMargin!=null?+r.grossMargin.toFixed(1):null,b.grossMargin.g,b.grossMargin.o,gs(r.grossMargin,b.grossMargin)],["Net Profit Margin (%)",r.netMargin!=null?+r.netMargin.toFixed(1):null,b.netMargin.g,b.netMargin.o,gs(r.netMargin,b.netMargin)],["Operating Margin (%)",r.opMargin!=null?+r.opMargin.toFixed(1):null,b.opMargin.g,b.opMargin.o,gs(r.opMargin,b.opMargin)],["EBITDA Margin (%)",r.ebitdaMargin!=null?+r.ebitdaMargin.toFixed(1):null,b.ebitdaMargin.g,b.ebitdaMargin.o,gs(r.ebitdaMargin,b.ebitdaMargin)],["ROE (%)",r.roe!=null?+r.roe.toFixed(1):null,b.roe.g,b.roe.o,gs(r.roe,b.roe)],["ROA (%)",r.roa!=null?+r.roa.toFixed(1):null,b.roa.g,b.roa.o,gs(r.roa,b.roa)],["Current Ratio",r.currentRatio!=null?+r.currentRatio.toFixed(2):null,b.currentRatio.g,b.currentRatio.o,gs(r.currentRatio,b.currentRatio)],["Quick Ratio",r.quickRatio!=null?+r.quickRatio.toFixed(2):null,b.quickRatio.g,b.quickRatio.o,gs(r.quickRatio,b.quickRatio)],["Working Capital ($)",r.workingCapital!=null?Math.round(r.workingCapital):null,null,null,"na"],["Operating Cash Flow ($)",r.ocfVal!=null?Math.round(r.ocfVal):null,null,null,"na"],["DSO",r.dso!=null?Math.round(r.dso):null,b.dso.g,b.dso.o,gs(r.dso,b.dso)],["Inventory Turnover",r.inventoryTurnover!=null?+r.inventoryTurnover.toFixed(1):null,b.inventoryTurnover.g,b.inventoryTurnover.o,gs(r.inventoryTurnover,b.inventoryTurnover)],["Debt to Equity",r.debtEquity!=null?+r.debtEquity.toFixed(2):null,b.debtEquity.g,b.debtEquity.o,gs(r.debtEquity,b.debtEquity)],["Debt to Assets",r.debtAsset!=null?+r.debtAsset.toFixed(2):null,b.debtAsset.g,b.debtAsset.o,gs(r.debtAsset,b.debtAsset)],["Sales per Employee ($)",r.salesPerEmployee!=null?Math.round(r.salesPerEmployee):null,b.salesPerEmployee.g,b.salesPerEmployee.o,gs(r.salesPerEmployee,b.salesPerEmployee)]];}
 
 function saveHist(r,ins,recs,per,co){
-  var rec={id:Date.now(),company:co,period:per,industry:IND,kpis:r,insights:ins,recs:recs,savedAt:new Date().toLocaleDateString()};
-  HIST.unshift(rec);if(HIST.length>60)HIST=HIST.slice(0,60);
+  var emp=parseInt(document.getElementById("emp").value)||1;
+  var rec={id:Date.now(),company:co,period:per,industry:IND,kpis:r,insights:ins,recs:recs,employees:emp,savedAt:new Date().toLocaleDateString()};
+  rec.monthKey=deriveMonthKey(rec);
+  HIST.unshift(rec);if(HIST.length>120)HIST=HIST.slice(0,120);
   try{localStorage.setItem("finiq_h",JSON.stringify(HIST));}catch(e){}
+  populateHeaderSelects();
 }
 
 function renderHist(){
@@ -1891,8 +1974,16 @@ function loadRec(i){
   if(h.recs)renderRecs(h.kpis,h.period,h.company);
   sw("kpis");
 }
-function delRec(i){if(!confirm("Delete this record?"))return;HIST.splice(i,1);try{localStorage.setItem("finiq_h",JSON.stringify(HIST));}catch(e){}renderHist();}
-function clearHist(){if(!confirm("Clear all history?"))return;HIST=[];try{localStorage.setItem("finiq_h","[]");}catch(e){}renderHist();}
+function delRec(i){
+  cfConfirm("Delete this record?","This period will be permanently removed from history. This cannot be undone.","Delete",function(){
+    HIST.splice(i,1);try{localStorage.setItem("finiq_h",JSON.stringify(HIST));}catch(e){}renderHist();populateHeaderSelects();
+  });
+}
+function clearHist(){
+  cfConfirm("Clear all history?","Every saved period will be permanently removed. This cannot be undone.","Clear All",function(){
+    HIST=[];try{localStorage.setItem("finiq_h","[]");}catch(e){}renderHist();populateHeaderSelects();
+  });
+}
 
 // ── EXPORTS ───────────────────────────────────────────────────────────────────
 function exportSingle(){
@@ -1920,6 +2011,241 @@ function exportHistory(){
   var ws1=XLSX.utils.aoa_to_sheet(h1);var c1=[{wch:30}];HIST.forEach(function(){c1.push({wch:22});});ws1["!cols"]=c1;
   XLSX.utils.book_append_sheet(wb,ws1,"All KPIs Side by Side");
   XLSX.writeFile(wb,"Modonix_FinIQ_Full_History_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+
+// ── HEADER COMPANY + RANGE SELECTORS ──────────────────────────────────────────
+function escH(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function escA(s){return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;");}
+
+// Month-name to number lookup for building sortable keys
+var MONTHNUM={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,
+jan:1,feb:2,mar:3,apr:4,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
+// Derive a sortable YYYYMM key from a record. Returns a number, or null if the
+// period text is not a recognizable single month (old quarter/annual records).
+function deriveMonthKey(rec){
+  if(rec.monthKey!=null)return rec.monthKey;
+  var p=String(rec.period||"").toLowerCase();
+  var ym=p.match(/([a-z]+)\s+(\d{4})/);
+  if(ym&&MONTHNUM[ym[1]]){return parseInt(ym[2])*100+MONTHNUM[ym[1]];}
+  return null;
+}
+// Records for a company that are real single months, sorted oldest-first
+function getMonthRecords(co){
+  var out=HIST.filter(function(h){return h.type!=="comparison"&&h.company===co&&deriveMonthKey(h)!=null;});
+  out.sort(function(a,b){return deriveMonthKey(a)-deriveMonthKey(b);});
+  return out;
+}
+// distinct company names from history (skip saved comparisons)
+function getCompanies(){
+  var seen={},out=[];
+  HIST.forEach(function(h){
+    if(h.type==="comparison")return;
+    var c=h.company||"";
+    if(c&&!seen[c]){seen[c]=1;out.push(c);}
+  });
+  return out;
+}
+// all single-period records for one company, newest first (HIST is newest-first)
+function getRecordsForCompany(co){
+  return HIST.filter(function(h){return h.type!=="comparison"&&h.company===co;});
+}
+
+// ── RANGE COMBINATION ─────────────────────────────────────────────────────────
+// Flow figures are summed across months. Snapshot figures are taken from the
+// last month in the range (a balance sheet is a point-in-time value).
+var FLOW_KEYS=["revenue","cogs","grossProfit","opEx","opIncome","interest","netIncome","depAmort","ocf","capex"];
+var SNAP_KEYS=["cash","ar","inventory","currentAssets","totalAssets","ap","currentLiab","longDebt","totalLiab","equity"];
+// Re-derive every KPI from a combined raw object. Mirrors calcKPIs math exactly.
+function deriveFromRaw(d,emp,monthsInRange){
+  var r={raw:d};
+  var annualize=monthsInRange>0?12/monthsInRange:12;
+  var rev=d.revenue,gp=d.grossProfit||(rev&&d.cogs!=null?rev-d.cogs:null);
+  var ni=d.netIncome,ca=d.currentAssets,cl=d.currentLiab;
+  var inv=d.inventory,ar=d.ar,te=d.equity,ta=d.totalAssets,tl=d.totalLiab;
+  var oi=d.opIncome||(gp&&d.opEx?gp-d.opEx:null);
+  r.grossMargin=gp&&rev?gp/rev*100:null;
+  r.netMargin=ni!=null&&rev?ni/rev*100:null;
+  r.opMargin=oi&&rev?oi/rev*100:null;
+  r.ebitda=oi&&d.depAmort?oi+d.depAmort:oi;
+  r.ebitdaMargin=r.ebitda&&rev?r.ebitda/rev*100:null;
+  r.currentRatio=ca&&cl?ca/cl:null;
+  r.quickRatio=ca!=null&&inv!=null&&cl?(ca-inv)/cl:null;
+  r.workingCapital=ca&&cl?ca-cl:null;
+  r.negativeEquity=te!=null&&te<0;
+  r.debtEquity=tl!=null&&te!=null&&te!==0?tl/te:null;
+  r.debtAsset=tl!=null&&ta?tl/ta:null;
+  r.roe=ni!=null&&te!=null&&te!==0?ni/te*100:null;
+  r.roa=ni!=null&&ta?ni/ta*100:null;
+  r.roi=ni!=null&&ta?ni/ta*100:null;
+  r.totalAssetTurnover=rev&&ta?(rev*annualize)/ta:null;
+  r.dso=ar&&rev?ar/(rev/(30.4*monthsInRange)):null;
+  r.inventoryTurnover=d.cogs&&inv?(d.cogs*annualize)/inv:null;
+  r.ocfVal=d.ocf;
+  r.freeCashFlow=d.ocf!=null&&d.capex!=null?d.ocf-Math.abs(d.capex):d.ocf;
+  r.salesPerEmployee=rev&&emp>0?(rev*annualize)/emp:null;
+  r.contributionMargin=gp&&rev?gp/rev*100:null;
+  if(d.opEx&&gp&&rev){var vcR=d.cogs&&rev?d.cogs/rev:0.5;var cm=1-vcR;r.breakevenSales=cm>0?d.opEx/cm:null;r.breakevenPct=r.breakevenSales&&rev?r.breakevenSales/rev*100:null;}
+  return r;
+}
+// Combine an array of month records (oldest-first) into one result object.
+// Returns {kpis, recs, insights, industry, employees, monthsFound, label}.
+function combineRange(recs){
+  if(!recs.length)return null;
+  if(recs.length===1){
+    var only=recs[0];
+    return{kpis:only.kpis,recs:only.recs,insights:only.insights,industry:only.industry,
+      monthsFound:1,label:only.period,single:true};
+  }
+  var d={};
+  FLOW_KEYS.forEach(function(k){d[k]=null;});
+  recs.forEach(function(h){
+    var raw=h.kpis&&h.kpis.raw?h.kpis.raw:{};
+    FLOW_KEYS.forEach(function(k){
+      if(raw[k]!=null){d[k]=(d[k]||0)+raw[k];}
+    });
+  });
+  // Snapshot figures: take from the LAST month in the range
+  var lastRaw=recs[recs.length-1].kpis&&recs[recs.length-1].kpis.raw?recs[recs.length-1].kpis.raw:{};
+  SNAP_KEYS.forEach(function(k){d[k]=lastRaw[k]!=null?lastRaw[k]:null;});
+  // Employees: use the last month's count
+  var emp=recs[recs.length-1].employees||1;
+  var combined=deriveFromRaw(d,emp,recs.length);
+  var firstP=recs[0].period,lastP=recs[recs.length-1].period;
+  var industry=recs[recs.length-1].industry;
+  var oldIND=IND;IND=industry;
+  var ins=genInsights(combined);
+  var rc=generateRecs(combined);
+  IND=oldIND;
+  return{kpis:combined,recs:rc,insights:ins,industry:industry,
+    monthsFound:recs.length,label:firstP+" to "+lastP,single:false};
+}
+// Get the records inside a from/to monthKey window for a company
+function recordsInWindow(co,fromKey,toKey){
+  var months=getMonthRecords(co);
+  return months.filter(function(h){
+    var k=deriveMonthKey(h);return k>=fromKey&&k<=toKey;
+  });
+}
+
+// ── HEADER SELECTORS ──────────────────────────────────────────────────────────
+function populateHeaderSelects(){
+  var companies=getCompanies();
+  var sel=document.getElementById("hdrCompany");
+  if(!sel)return;
+  var keep=sel.value;
+  sel.innerHTML='<option value="">All companies</option>'+
+    companies.map(function(c){return'<option value="'+escA(c)+'">'+escH(c)+'</option>';}).join("");
+  if(keep&&companies.indexOf(keep)>=0)sel.value=keep;
+  var dl=document.getElementById("company-list");
+  if(dl)dl.innerHTML=companies.map(function(c){return'<option value="'+escA(c)+'">';}).join("");
+  refreshHeaderRange();
+}
+// Fill the From and To month dropdowns for the selected company
+function refreshHeaderRange(){
+  var co=document.getElementById("hdrCompany").value;
+  var fSel=document.getElementById("hdrFrom"),tSel=document.getElementById("hdrTo");
+  var months=co?getMonthRecords(co):[];
+  // also surface any non-month records (old quarter imports) as single picks
+  var others=co?getRecordsForCompany(co).filter(function(h){return deriveMonthKey(h)==null;}):[];
+  if(!co||(!months.length&&!others.length)){
+    fSel.innerHTML='<option value="">From</option>';
+    tSel.innerHTML='<option value="">To</option>';
+    fSel.disabled=true;tSel.disabled=true;return;
+  }
+  fSel.disabled=false;tSel.disabled=false;
+  var monthOpts=months.map(function(h){
+    return'<option value="'+deriveMonthKey(h)+'">'+escH(h.period)+'</option>';
+  }).join("");
+  var otherOpts=others.map(function(h){
+    return'<option value="rec:'+h.id+'">'+escH(h.period)+'</option>';
+  }).join("");
+  fSel.innerHTML=monthOpts+otherOpts;
+  tSel.innerHTML=monthOpts+otherOpts;
+  // default: full span — oldest in From, newest in To
+  if(months.length){
+    fSel.value=deriveMonthKey(months[0]);
+    tSel.value=deriveMonthKey(months[months.length-1]);
+  }else if(others.length){
+    fSel.value="rec:"+others[0].id;tSel.value="rec:"+others[0].id;
+  }
+}
+// Company changed: rebuild range dropdowns and load the default full span
+function onHeaderCompany(){
+  refreshHeaderRange();
+  var co=document.getElementById("hdrCompany").value;
+  if(!co)return;
+  onHeaderRange();
+}
+// From or To changed: load the selected range
+function onHeaderRange(){
+  var co=document.getElementById("hdrCompany").value;
+  if(!co)return;
+  var fv=document.getElementById("hdrFrom").value;
+  var tv=document.getElementById("hdrTo").value;
+  if(!fv||!tv)return;
+  // Single old non-month record selected
+  if(fv.indexOf("rec:")===0||tv.indexOf("rec:")===0){
+    var id=(fv.indexOf("rec:")===0?fv:tv).slice(4);
+    loadRecordById(id);return;
+  }
+  var fromKey=parseInt(fv),toKey=parseInt(tv);
+  if(fromKey>toKey){var tmp=fromKey;fromKey=toKey;toKey=tmp;
+    document.getElementById("hdrFrom").value=fromKey;
+    document.getElementById("hdrTo").value=toKey;}
+  var recs=recordsInWindow(co,fromKey,toKey);
+  loadCombinedRange(co,recs,fromKey,toKey);
+}
+// Render a combined range into KPI / Analysis / Benchmark / Recommendations
+function loadCombinedRange(co,recs,fromKey,toKey){
+  if(!recs.length)return;
+  var combo=combineRange(recs);
+  IND=combo.industry;document.getElementById("industry").value=combo.industry;
+  LAST=combo.kpis;LINS=combo.insights;LRECS=combo.recs;LCO=co;LPER=combo.label;
+  // gap detection: how many calendar months SHOULD be in this window
+  var expected=(Math.floor(toKey/100)*12+(toKey%100))-(Math.floor(fromKey/100)*12+(fromKey%100))+1;
+  var gapNote="";
+  if(combo.monthsFound<expected){
+    gapNote=" ("+combo.monthsFound+" of "+expected+" months found - gap in data)";
+  }else if(combo.monthsFound>1){
+    gapNote=" ("+combo.monthsFound+" months combined)";
+  }
+  document.getElementById("ptag").textContent=co+" -- "+combo.label+gapNote;
+  document.getElementById("kpititle").textContent=co+" -- KPI Dashboard";
+  document.getElementById("kpisub").textContent=combo.label+gapNote+" | "+B[combo.industry].name;
+  renderKPIs(combo.kpis);
+  renderAnalysis(combo.insights);
+  renderBM(combo.kpis);
+  renderRecs(combo.kpis,combo.label,co);
+}
+// Load a single old (non-month) record directly
+function loadRecordById(id){
+  var h=null;
+  for(var i=0;i<HIST.length;i++){if(String(HIST[i].id)===String(id)){h=HIST[i];break;}}
+  if(!h)return;
+  IND=h.industry;document.getElementById("industry").value=h.industry;
+  LAST=h.kpis;LINS=h.insights;LPER=h.period;LCO=h.company;LRECS=h.recs||null;
+  document.getElementById("ptag").textContent=h.company+" -- "+h.period;
+  document.getElementById("kpititle").textContent=h.company+" -- KPI Dashboard";
+  document.getElementById("kpisub").textContent=h.period+" | "+B[h.industry].name;
+  renderKPIs(h.kpis);
+  if(h.insights)renderAnalysis(h.insights);
+  renderBM(h.kpis);
+  if(h.recs)renderRecs(h.kpis,h.period,h.company);
+}
+
+// ── CONFIRM MODAL ─────────────────────────────────────────────────────────────
+var _cfCallback=null;
+function cfConfirm(title,msg,okLabel,onYes){
+  _cfCallback=onYes;
+  document.getElementById("cf-modal-title").textContent=title||"Are you sure?";
+  document.getElementById("cf-modal-msg").textContent=msg||"This action cannot be undone.";
+  document.getElementById("cf-modal-ok").textContent=okLabel||"Delete";
+  document.getElementById("cf-modal").style.display="flex";
+}
+function cfModalClose(confirmed){
+  document.getElementById("cf-modal").style.display="none";
+  var cb=_cfCallback;_cfCallback=null;
+  if(confirmed&&cb)cb();
 }
 
 // ── MAIN RUN ──────────────────────────────────────────────────────────────────
@@ -1996,7 +2322,10 @@ function sw(n){
 function onInd(){IND=document.getElementById("industry").value;if(LAST){renderKPIs(LAST);renderBM(LAST);document.getElementById("kpisub").textContent=LPER+" | "+B[IND].name;}}
 
 // Init
+// Back-fill monthKey on records saved before v3 so ranges work on old data
+HIST.forEach(function(h){if(h.monthKey===undefined)h.monthKey=deriveMonthKey(h);});
 renderHist();
+populateHeaderSelects();
 </script>
 </body>
 </html>
