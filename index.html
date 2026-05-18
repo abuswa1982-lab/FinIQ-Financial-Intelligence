@@ -221,12 +221,13 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
     <select class="isel" id="hdrCompany" onchange="onHeaderCompany()" style="min-width:150px">
       <option value="">All companies</option>
     </select>
-    <select class="isel" id="hdrFrom" onchange="onHeaderRange()" style="min-width:120px" disabled title="Range start month">
+    <select class="isel" id="hdrFrom" style="min-width:120px" disabled title="Range start month">
       <option value="">From</option>
     </select>
-    <select class="isel" id="hdrTo" onchange="onHeaderRange()" style="min-width:120px" disabled title="Range end month">
+    <select class="isel" id="hdrTo" style="min-width:120px" disabled title="Range end month">
       <option value="">To</option>
     </select>
+    <button class="btnex" id="hdrRun" onclick="onHeaderRange()" style="background:#1a5cff" disabled>Run</button>
     <select class="isel" id="industry" onchange="onInd()">
       <option value="ecommerce">E-commerce / Online Retail</option>
       <option value="retail">Brick &amp; Mortar Retail</option>
@@ -369,6 +370,10 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
     <div id="rec-progress" style="display:none;margin-bottom:20px">
       <div class="stitle">Progress vs previous period</div>
       <div id="rec-progress-list"></div>
+    </div>
+    <div id="rec-range-trend" style="display:none;margin-bottom:20px">
+      <div class="stitle">Month-by-month trend across this range</div>
+      <div id="rec-range-trend-list"></div>
     </div>
     <div class="stitle" id="rect-critical" style="display:none;color:var(--danger)">Critical &mdash; Fix immediately</div>
     <div id="rec-critical"></div>
@@ -2150,9 +2155,12 @@ function refreshHeaderRange(){
   if(!co||(!months.length&&!others.length)){
     fSel.innerHTML='<option value="">From</option>';
     tSel.innerHTML='<option value="">To</option>';
-    fSel.disabled=true;tSel.disabled=true;return;
+    fSel.disabled=true;tSel.disabled=true;
+    var rb0=document.getElementById("hdrRun");if(rb0)rb0.disabled=true;
+    return;
   }
   fSel.disabled=false;tSel.disabled=false;
+  var rb=document.getElementById("hdrRun");if(rb)rb.disabled=false;
   var monthOpts=months.map(function(h){
     return'<option value="'+deriveMonthKey(h)+'">'+escH(h.period)+'</option>';
   }).join("");
@@ -2169,17 +2177,14 @@ function refreshHeaderRange(){
     fSel.value="rec:"+others[0].id;tSel.value="rec:"+others[0].id;
   }
 }
-// Company changed: rebuild range dropdowns and load the default full span
+// Company changed: rebuild range dropdowns only. Loading waits for the Run button.
 function onHeaderCompany(){
   refreshHeaderRange();
-  var co=document.getElementById("hdrCompany").value;
-  if(!co)return;
-  onHeaderRange();
 }
-// From or To changed: load the selected range
+// Run button pressed: load the selected company + range
 function onHeaderRange(){
   var co=document.getElementById("hdrCompany").value;
-  if(!co)return;
+  if(!co){document.getElementById("ptag").textContent="Pick a company first";return;}
   var fv=document.getElementById("hdrFrom").value;
   var tv=document.getElementById("hdrTo").value;
   if(!fv||!tv)return;
@@ -2216,6 +2221,67 @@ function loadCombinedRange(co,recs,fromKey,toKey){
   renderAnalysis(combo.insights);
   renderBM(combo.kpis);
   renderRecs(combo.kpis,combo.label,co);
+  renderRangeTrend(recs);
+}
+// Build the month-by-month trend strip for the Recommendations tab.
+// recs is the array of single-month records in the range, oldest-first.
+function renderRangeTrend(recs){
+  var box=document.getElementById("rec-range-trend");
+  var list=document.getElementById("rec-range-trend-list");
+  if(!box||!list)return;
+  // only meaningful when 2+ real months are in the range
+  var months=recs.filter(function(h){return deriveMonthKey(h)!=null;});
+  if(months.length<2){box.style.display="none";list.innerHTML="";return;}
+  var metrics=[
+    {n:"Revenue",k:"revenue",t:"usd",better:"up"},
+    {n:"Gross Margin",k:"grossMargin",t:"pct",better:"up"},
+    {n:"Net Margin",k:"netMargin",t:"pct",better:"up"},
+    {n:"Operating Cash Flow",k:"ocfVal",t:"usd",better:"up"},
+    {n:"Current Ratio",k:"currentRatio",t:"ratio",better:"up"},
+    {n:"DSO",k:"dso",t:"days",better:"down"},
+    {n:"Inventory Turnover",k:"inventoryTurnover",t:"turns",better:"up"}
+  ];
+  function val(rec,m){
+    var kp=rec.kpis||{};
+    if(m.k==="revenue")return kp.raw&&kp.raw.revenue!=null?kp.raw.revenue:null;
+    return kp[m.k]!=null?kp[m.k]:null;
+  }
+  var html="";
+  metrics.forEach(function(m){
+    var series=months.map(function(rec){return{p:rec.period,v:val(rec,m)};});
+    if(series.every(function(s){return s.v==null;}))return;
+    // overall direction: first vs last non-null
+    var firstV=null,lastV=null;
+    series.forEach(function(s){if(s.v!=null){if(firstV==null)firstV=s.v;lastV=s.v;}});
+    var dir="flat";
+    if(firstV!=null&&lastV!=null&&Math.abs(lastV-firstV)>0.001){
+      var rising=lastV>firstV;
+      dir=(m.better==="up")?(rising?"improved":"declined"):(rising?"declined":"improved");
+    }
+    var badge=dir==="improved"?"improved":dir==="declined"?"declined":"flat";
+    var badgeTxt=dir==="improved"?"Trending up":dir==="declined"?"Trending down":"Flat";
+    // build the month chain: Jan 1,000 > Feb 1,200 > Mar 1,100
+    var chain=series.map(function(s,i){
+      var cell='<span style="white-space:nowrap">'+escH(s.p)+' <strong>'+fmt(s.v,m.t)+'</strong></span>';
+      if(i<series.length-1){
+        var a=series[i].v,b2=series[i+1].v;
+        var arr='<span class="tflat"> &#8212; </span>';
+        if(a!=null&&b2!=null&&Math.abs(b2-a)>0.001){
+          var up=b2>a;
+          var good=(m.better==="up")?up:!up;
+          arr='<span class="'+(good?"tup":"tdown")+'"> '+(up?"&#9650;":"&#9660;")+' </span>';
+        }
+        cell+=arr;
+      }
+      return cell;
+    }).join("");
+    html+='<div class="prog-item"><span class="prog-name">'+m.n+'</span>'+
+      '<span class="prog-vals" style="flex-wrap:wrap">'+chain+'</span>'+
+      '<span class="prog-badge '+badge+'">'+badgeTxt+'</span></div>';
+  });
+  if(!html){box.style.display="none";list.innerHTML="";return;}
+  list.innerHTML=html;
+  box.style.display="block";
 }
 // Load a single old (non-month) record directly
 function loadRecordById(id){
@@ -2231,6 +2297,7 @@ function loadRecordById(id){
   if(h.insights)renderAnalysis(h.insights);
   renderBM(h.kpis);
   if(h.recs)renderRecs(h.kpis,h.period,h.company);
+  var rt=document.getElementById("rec-range-trend");if(rt)rt.style.display="none";
 }
 
 // ── CONFIRM MODAL ─────────────────────────────────────────────────────────────
@@ -2270,6 +2337,7 @@ function runAnalysis(){
       renderKPIs(r);renderAnalysis(ins);renderBM(r);
       saveHist(r,ins,recs,per,co);
       renderRecs(r,per,co);
+      var rtv=document.getElementById("rec-range-trend");if(rtv)rtv.style.display="none";
       // ── Populate debug panel ──
       var d=r.raw;
       var debugRows=[
