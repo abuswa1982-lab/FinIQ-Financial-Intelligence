@@ -251,6 +251,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <button class="ntab" onclick="sw('recommendations')">Recommendations</button>
   <button class="ntab cmp-tab" onclick="sw('compare')">⇄ Compare Periods</button>
   <button class="ntab" onclick="sw('history')">History</button>
+  <button class="ntab" onclick="sw('guide')">KPI Guide</button>
 </div>
 
 <!-- IMPORT -->
@@ -566,6 +567,15 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <div id="hist-empty" class="empty"><div class="ico">&#128197;</div><p>No history yet. Every period you analyze is saved here automatically.</p></div>
   <div id="histlist"></div>
   <div id="histtrend"></div>
+</div>
+
+<!-- KPI GUIDE -->
+<div class="panel" id="p-guide">
+  <div class="dhdr">
+    <div><div class="dtitle">KPI Guide</div><div class="dsub">What each metric measures and why it matters.</div></div>
+  </div>
+  <div class="tip" style="margin-bottom:16px">Flow metrics (margins, DSO, turnover) combine correctly across a multi-month range. Balance-sheet metrics (ratios, working capital, leverage, ROE, ROA) are a single-day snapshot &mdash; in a range they reflect the last month in that range, not an average.</div>
+  <div id="guide-body"></div>
 </div>
 
 <!-- CONFIRM MODAL -->
@@ -2379,15 +2389,68 @@ function runAnalysis(){
 }
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
-var TABS=["import","kpis","analysis","benchmark","recommendations","compare","history"];
+var TABS=["import","kpis","analysis","benchmark","recommendations","compare","history","guide"];
 function sw(n){
   TABS.forEach(function(x,i){document.querySelectorAll(".ntab")[i].classList.remove("on");document.getElementById("p-"+x).classList.remove("on");});
   document.querySelectorAll(".ntab")[TABS.indexOf(n)].classList.add("on");
   document.getElementById("p-"+n).classList.add("on");
   if(n==="history")renderHist();
   if(n==="compare")populateCmpSelects();
+  if(n==="guide")renderGuide();
 }
 function onInd(){IND=document.getElementById("industry").value;if(LAST){renderKPIs(LAST);renderBM(LAST);document.getElementById("kpisub").textContent=LPER+" | "+B[IND].name;}}
+
+// ── KPI GUIDE ─────────────────────────────────────────────────────────────────
+var GUIDE=[
+  {grp:"Profitability",items:[
+    {n:"Gross Margin (%)",d:"Of every dollar you sell, how much is left after the cost of the product itself. Tells you whether pricing and supplier costs are healthy, before any overhead.",type:"flow"},
+    {n:"Net Profit Margin (%)",d:"Of every dollar you sell, how much you actually keep after everything &mdash; product cost, overhead, interest, taxes. The bottom line: did the business make money.",type:"flow"},
+    {n:"Operating Margin (%)",d:"Profit from running the business, before interest and taxes. Isolates how well the core operation performs, separate from how the company is financed.",type:"flow"},
+    {n:"EBITDA Margin (%)",d:"Operating margin with depreciation and amortization added back. Strips out non-cash accounting charges to compare operating performance on a cash-ish basis. If it equals operating margin exactly, no D&A is being captured.",type:"flow"},
+    {n:"ROE &mdash; Return on Equity (%)",d:"How much profit you generate for every dollar the owners have in the business. Measures return to the owner. Becomes unreliable when equity is negative.",type:"snap"},
+    {n:"ROA &mdash; Return on Assets (%)",d:"How much profit you generate for every dollar of assets the business holds. Measures how efficiently the assets are used, regardless of how they were financed.",type:"snap"},
+    {n:"Contribution Margin (%)",d:"Revenue left after variable costs, available to cover fixed costs and profit. Shows how much each additional sale contributes.",type:"flow"}
+  ]},
+  {grp:"Liquidity & Cash",items:[
+    {n:"Current Ratio",d:"Current assets divided by current liabilities. Can the business cover what it owes in the next year with what it has on hand. Above ~1.5 is comfortable; below 1.0 is a warning.",type:"snap"},
+    {n:"Quick Ratio",d:"Same idea as current ratio but excludes inventory, since inventory can't always be sold fast. A stricter test of whether you can pay your bills right now.",type:"snap"},
+    {n:"Working Capital ($)",d:"Current assets minus current liabilities, in dollars. The actual cash cushion the business runs on day to day.",type:"snap"},
+    {n:"Operating Cash Flow ($)",d:"Actual cash the core business generated, not accounting profit. A company can show profit and still run out of cash &mdash; this is the truth check.",type:"flow"},
+    {n:"Free Cash Flow ($)",d:"Operating cash flow minus capital spending. The cash genuinely free to pay down debt, return to owners, or reinvest.",type:"flow"}
+  ]},
+  {grp:"Efficiency",items:[
+    {n:"DSO &mdash; Days Sales Outstanding",d:"On average, how many days customers take to pay you after a sale. Lower is better &mdash; cash comes in fast instead of being tied up in receivables.",type:"flow"},
+    {n:"Inventory Turnover",d:"How many times per year you sell through and replace your stock. Higher means inventory isn't sitting around tying up cash.",type:"flow"},
+    {n:"Total Asset Turnover",d:"Revenue generated per dollar of total assets. A broad measure of how hard the asset base is working.",type:"snap"},
+    {n:"Sales per Employee ($)",d:"Annualized revenue divided by headcount. A rough productivity measure &mdash; how much revenue each person supports.",type:"flow"}
+  ]},
+  {grp:"Leverage",items:[
+    {n:"Debt to Equity",d:"Total liabilities versus owner equity. How leveraged the business is &mdash; how much is financed by debt versus by the owners. Goes negative when equity is negative.",type:"snap"},
+    {n:"Debt to Assets",d:"Total liabilities as a share of total assets. Above 1.0 means liabilities exceed assets &mdash; the negative-equity flag.",type:"snap"}
+  ]},
+  {grp:"Break-even",items:[
+    {n:"Break-even Sales ($)",d:"The revenue level at which the business covers all its costs and makes zero profit. Sales below this lose money.",type:"flow"},
+    {n:"Break-even % of Revenue",d:"Break-even sales as a share of actual revenue. Lower is safer &mdash; it shows how much revenue could drop before you hit a loss.",type:"flow"}
+  ]}
+];
+function renderGuide(){
+  var box=document.getElementById("guide-body");
+  if(!box||box.dataset.done==="1")return;
+  var html="";
+  GUIDE.forEach(function(g){
+    html+='<div style="margin-bottom:18px"><div class="stitle">'+g.grp+'</div>';
+    g.items.forEach(function(it){
+      var tag=it.type==="snap"
+        ?'<span class="abadge info" style="margin-left:8px">Snapshot</span>'
+        :'<span class="abadge good" style="margin-left:8px">Flow</span>';
+      html+='<div class="acard"><div class="ahead"><span class="atitle">'+it.n+'</span>'+tag+'</div>'+
+        '<div class="abody">'+it.d+'</div></div>';
+    });
+    html+='</div>';
+  });
+  box.innerHTML=html;
+  box.dataset.done="1";
+}
 
 // Init
 // Back-fill monthKey on records saved before v3 so ranges work on old data
