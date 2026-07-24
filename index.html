@@ -59,6 +59,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 /* Comparison tab gets a distinct accent */
 .ntab.cmp-tab{color:#7c3aed}
 .ntab.cmp-tab.on{color:#7c3aed;border-bottom-color:#7c3aed}
+/* Assumptions Engine tab gets its own distinct accent */
+.ntab.asm-tab{color:#0a7c4a}
+.ntab.asm-tab.on{color:#0a7c4a;border-bottom-color:#0a7c4a}
 .panel{display:none;padding:22px;background:var(--bg2);min-height:400px}.panel.on{display:block}
 .lbl{font-size:11px;font-weight:600;color:var(--ink3);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
 input,select{font-size:13px;font-family:inherit;border:1px solid var(--border);border-radius:8px;padding:9px 11px;background:var(--bg2);color:var(--ink);width:100%;transition:border-color .15s}
@@ -211,6 +214,35 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .crec-body{font-size:12px;color:var(--ink2);line-height:1.75;margin-bottom:8px}
 .crec-steps{background:rgba(255,255,255,0.7);border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.7;border-left:2px solid var(--accent)}
 .crec-steps strong{display:block;color:var(--ink);font-size:11px;margin-bottom:4px}
+
+/* ── ASSUMPTIONS ENGINE TAB STYLES ── */
+.asm-split{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+@media(max-width:900px){.asm-split{grid-template-columns:1fr}}
+.asm-col{border:1px solid var(--border);border-radius:var(--rl);padding:16px;background:var(--bg2)}
+.asm-col-hdr{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding:8px 12px;border-radius:8px}
+.asm-col-hdr.scen-a{background:#e8f0fe;color:#1a56db}
+.asm-col-hdr.scen-b{background:#e6f4ed;color:#0a7c4a}
+.asm-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);border-top:1px solid var(--border);margin-top:14px;padding-top:12px;margin-bottom:8px}
+.asm-field{margin-bottom:10px}
+.asm-field-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.asm-field label{font-size:11.5px;color:var(--ink2)}
+.asm-field .asm-val{font-size:11.5px;color:var(--ink3);font-weight:600}
+.asm-field input[type=number]{padding:7px 9px;font-size:12px}
+.asm-field input[type=range]{width:100%;accent-color:#1a5cff}
+.asm-col.b input[type=range]{accent-color:#0a7c4a}
+.asm-wf{margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
+.asm-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12.5px}
+.asm-row .l{color:var(--ink3)}
+.asm-row.total{border-top:1px solid var(--border);margin-top:6px;padding-top:10px;font-size:15px;font-weight:700}
+.asm-row.total .v.pos{color:var(--success)}.asm-row.total .v.neg{color:var(--danger)}
+.asm-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.asm-pill{padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:600;background:var(--bg);border:1px solid var(--border)}
+.asm-pill.warn{border-color:var(--danger);color:var(--danger)}
+.asm-pill.ok{border-color:var(--success);color:var(--success)}
+.asm-delta{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:14px 18px;margin-bottom:18px}
+.asm-delta-num{font-size:24px;font-weight:800}
+.asm-ai-card{border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;margin-top:16px}
+.asm-ai-body{font-size:12.5px;line-height:1.7;color:var(--ink2);white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -250,6 +282,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <button class="ntab" onclick="sw('benchmark')">Benchmarks</button>
   <button class="ntab" onclick="sw('recommendations')">Recommendations</button>
   <button class="ntab cmp-tab" onclick="sw('compare')">⇄ Compare Periods</button>
+  <button class="ntab asm-tab" onclick="sw('assumptions')">⚙ Assumptions Engine</button>
   <button class="ntab" onclick="sw('history')">History</button>
   <button class="ntab" onclick="sw('guide')">KPI Guide</button>
 </div>
@@ -555,6 +588,44 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
       <button class="btnex" style="background:#c0392b" id="cmp-pdf-btn" onclick="exportComparisonPDF()">Export KPI PDF</button>
       <button class="btnex" style="background:#7c3aed" id="cmp-recs-pdf-btn" onclick="exportComparisonRecsPDF()">Export Recommendations PDF</button>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     ASSUMPTIONS ENGINE TAB
+     ══════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-assumptions">
+  <div class="dhdr">
+    <div>
+      <div class="dtitle">⚙ Assumptions Engine</div>
+      <div class="dsub">Model two "what if" scenarios side by side, using either your own numbers or the currently loaded period.</div>
+    </div>
+    <div class="exrow">
+      <button class="btnex" style="background:#0a7c4a" onclick="asmLoadFromCurrent()">Load current period into Scenario A</button>
+      <button class="btnex" style="background:#1a56db" onclick="asmLoadFromCompareA()">Load Compare's Period A</button>
+      <button class="btnex" style="background:#b45309" onclick="asmLoadFromCompareB()">Load Compare's Period B</button>
+    </div>
+  </div>
+
+  <div class="asm-delta">
+    <div>
+      <div class="lbl" style="margin-bottom:4px">Net income — Scenario A minus Scenario B</div>
+      <div style="font-size:11px;color:var(--ink3)" id="asmDeltaSub">—</div>
+    </div>
+    <div class="asm-delta-num" id="asmDeltaVal">$0</div>
+  </div>
+
+  <div class="asm-split">
+    <div class="asm-col a" id="asmCardA"></div>
+    <div class="asm-col b" id="asmCardB"></div>
+  </div>
+
+  <div class="asm-ai-card">
+    <div class="dhdr" style="margin-bottom:10px">
+      <div class="dtitle" style="font-size:14px">AI Read On This</div>
+      <button class="btnex" id="asmAiBtn" onclick="asmRunAI()">Generate report</button>
+    </div>
+    <div id="asmAiBody" class="asm-ai-body" style="color:var(--ink3)">Set your assumptions above, then generate a quick plain-English read on what the two scenarios mean together.</div>
   </div>
 </div>
 
@@ -901,9 +972,9 @@ function renderRecs(r,period,company){
   document.getElementById("rec-good").innerHTML=good.map(makeCard).join("");
   if(HIST.length>=2){
     var prv=HIST[1];
-    var kpis=[{n:"Gross Margin",c:r.grossMargin,p:prv.kpis.grossMargin,t:"pct",better:"up"},{n:"Net Margin",c:r.netMargin,p:prv.kpis.netMargin,t:"pct",better:"up"},{n:"Current Ratio",c:r.currentRatio,p:prv.kpis.currentRatio,t:"ratio",better:"up"},{n:"Quick Ratio",c:r.quickRatio,p:prv.kpis.quickRatio,t:"ratio",better:"up"},{n:"DSO",c:r.dso,p:prv.kpis.dso,t:"days",better:"down"},{n:"Inventory Turnover",c:r.inventoryTurnover,p:prv.kpis.inventoryTurnover,t:"turns",better:"up"},{n:"Debt/Assets",c:r.debtAsset,p:prv.kpis.debtAsset,t:"ratio",better:"down"},{n:"Working Capital",c:r.workingCapital,p:prv.kpis.workingCapital,t:"usd",better:"up"}];
+    var kpis=[{n:"Gross Margin",c:r.grossMargin,p:prv.kpis.grossMargin,t:"pct"},{n:"Net Margin",c:r.netMargin,p:prv.kpis.netMargin,t:"pct"},{n:"Current Ratio",c:r.currentRatio,p:prv.kpis.currentRatio,t:"ratio"},{n:"Quick Ratio",c:r.quickRatio,p:prv.kpis.quickRatio,t:"ratio"},{n:"DSO",c:r.dso,p:prv.kpis.dso,t:"days"},{n:"Inventory Turnover",c:r.inventoryTurnover,p:prv.kpis.inventoryTurnover,t:"turns"},{n:"Debt/Assets",c:r.debtAsset,p:prv.kpis.debtAsset,t:"ratio"},{n:"Working Capital",c:r.workingCapital,p:prv.kpis.workingCapital,t:"usd"}];
     var ph="";
-    kpis.forEach(function(km){if(km.c==null||km.p==null)return;var diff=km.c-km.p;var imp=km.better==="up"?diff>0.01:diff<-0.01;var dec=km.better==="up"?diff<-0.01:diff>0.01;var badge=imp?"improved":dec?"declined":"flat";var badgeTxt=imp?"Improved":dec?"Declined":"No change";var arr=imp?"&#9650;":dec?"&#9660;":"&#8212;";var cls=imp?"tup":dec?"tdown":"tflat";ph+='<div class="prog-item"><span class="prog-name">'+km.n+'</span><span class="prog-vals"><span>'+fmt(km.p,km.t)+'</span><span class="'+cls+'"> '+arr+' </span><span>'+fmt(km.c,km.t)+'</span></span><span class="prog-badge '+badge+'">'+badgeTxt+'</span></div>';});
+    kpis.forEach(function(km){if(km.c==null||km.p==null)return;var better=(km.n==="DSO"||km.n==="Debt/Assets")?"down":"up";var diff=km.c-km.p;var imp=better==="up"?diff>0.01:diff<-0.01;var dec=better==="up"?diff<-0.01:diff>0.01;var badge=imp?"improved":dec?"declined":"flat";var badgeTxt=imp?"Improved":dec?"Declined":"No change";var arr=imp?"&#9650;":dec?"&#9660;":"&#8212;";var cls=imp?"tup":dec?"tdown":"tflat";ph+='<div class="prog-item"><span class="prog-name">'+km.n+'</span><span class="prog-vals"><span>'+fmt(km.p,km.t)+'</span><span class="'+cls+'"> '+arr+' </span><span>'+fmt(km.c,km.t)+'</span></span><span class="prog-badge '+badge+'">'+badgeTxt+'</span></div>';});
     document.getElementById("rec-progress-list").innerHTML=ph;
     document.getElementById("rec-progress").style.display=ph?"block":"none";
   }
@@ -2388,8 +2459,215 @@ function runAnalysis(){
   },100);
 }
 
+// ── ASSUMPTIONS ENGINE ────────────────────────────────────────────────────────
+var ASM_PL_FIELDS=[
+  {key:"revenue",label:"Revenue ($/yr)",type:"number",min:0,max:20000000,step:1000},
+  {key:"cogsPct",label:"Cost of goods sold (% of revenue)",type:"range",min:30,max:95,step:0.1,suffix:"%"},
+  {key:"interest",label:"Interest expense ($/yr)",type:"number",min:0,max:1000000,step:500}
+];
+var ASM_OPEX_BUCKETS=[
+  {key:"payroll",label:"Salary & payroll taxes"},
+  {key:"rent",label:"Rent"},
+  {key:"warehousing",label:"Warehousing & facilities"},
+  {key:"communications",label:"Communications & software"},
+  {key:"professional",label:"Professional fees & licensing"},
+  {key:"travel",label:"Meals & travel"},
+  {key:"otherUnallocated",label:"Other / unallocated opex"}
+];
+var ASM_BS_FIELDS=[
+  {key:"cash",label:"Cash on hand ($)",min:0,max:10000000,step:1000},
+  {key:"ar",label:"Accounts receivable ($)",min:0,max:10000000,step:1000},
+  {key:"inventory",label:"Inventory ($)",min:0,max:10000000,step:1000},
+  {key:"ap",label:"Accounts payable ($)",min:0,max:10000000,step:1000},
+  {key:"otherCurrentLiab",label:"Other current liabilities incl. credit cards ($)",min:0,max:10000000,step:1000},
+  {key:"longDebt",label:"Long-term debt ($)",min:0,max:20000000,step:1000},
+  {key:"startingEquity",label:"Starting equity ($)",min:-5000000,max:20000000,step:1000}
+];
+var ASM_CF_FIELDS=[
+  {key:"inventoryChange",label:"Planned inventory build/(reduction) this year ($)",min:-2000000,max:2000000,step:1000},
+  {key:"debtPaydown",label:"Planned debt principal paydown this year ($)",min:-1000000,max:1000000,step:1000}
+];
+var ASM={
+  A:{revenue:4200000,cogsPct:81.5,interest:103586,
+     opex:{payroll:52608,rent:61805,warehousing:28892,communications:15376,professional:16548,travel:12297,otherUnallocated:0},
+     bs:{cash:224937,ar:212587,inventory:355560,ap:258731,otherCurrentLiab:276023,longDebt:1405766,startingEquity:338844},
+     cf:{inventoryChange:0,debtPaydown:80000}},
+  B:{revenue:4200000,cogsPct:79.5,interest:103586,
+     opex:{payroll:52608,rent:61805,warehousing:28892,communications:15376,professional:16548,travel:12297,otherUnallocated:0},
+     bs:{cash:224937,ar:212587,inventory:355560,ap:258731,otherCurrentLiab:276023,longDebt:1405766,startingEquity:338844},
+     cf:{inventoryChange:0,debtPaydown:80000}}
+};
+function asmOpexTotal(s){return ASM_OPEX_BUCKETS.reduce(function(sum,b){return sum+(s.opex[b.key]||0);},0);}
+function asmFmt(n){return (n<0?"-$":"$")+Math.abs(Math.round(n)).toLocaleString();}
+function asmPct(n){return n.toFixed(2)+"%";}
+function asmCompute(s){
+  var gp=s.revenue*(1-s.cogsPct/100);
+  var opExTotal=asmOpexTotal(s);
+  var noi=gp-opExTotal;
+  var ni=noi-s.interest;
+  var margin=s.revenue?(ni/s.revenue)*100:0;
+  var gm=100-s.cogsPct;
+  var bs=s.bs;
+  var currentAssets=bs.cash+bs.ar+bs.inventory;
+  var currentLiab=bs.ap+bs.otherCurrentLiab;
+  var quickRatio=currentLiab?(bs.cash+bs.ar)/currentLiab:null;
+  var totalLiab=currentLiab+bs.longDebt;
+  var endingEquity=bs.startingEquity+ni;
+  var debtToEquity=endingEquity?totalLiab/endingEquity:null;
+  var projectedCash=bs.cash+ni-s.cf.inventoryChange-s.cf.debtPaydown;
+  return{gp:gp,opExTotal:opExTotal,noi:noi,ni:ni,margin:margin,gm:gm,currentAssets:currentAssets,currentLiab:currentLiab,
+    quickRatio:quickRatio,totalLiab:totalLiab,endingEquity:endingEquity,debtToEquity:debtToEquity,projectedCash:projectedCash};
+}
+function asmRenderCard(key,label){
+  var el=document.getElementById("asmCard"+key);
+  var s=ASM[key];
+  var hdrCls=key==="A"?"scen-a":"scen-b";
+  var html='<div class="asm-col-hdr '+hdrCls+'">'+label+'</div>';
+  html+='<div class="asm-sec">Profit &amp; loss assumptions</div>';
+  ASM_PL_FIELDS.forEach(function(f){
+    var v=s[f.key];
+    var dv=f.type==="range"?v+(f.suffix||""):asmFmt(v);
+    html+='<div class="asm-field"><div class="asm-field-top"><label>'+f.label+'</label><span class="asm-val" id="asm_'+key+'_'+f.key+'_val">'+dv+'</span></div>'+
+      '<input type="'+(f.type==="range"?"range":"number")+'" id="asm_'+key+'_'+f.key+'" min="'+f.min+'" max="'+f.max+'" step="'+f.step+'" value="'+v+'"></div>';
+  });
+  html+='<div class="asm-sec">Operating expenses, by category</div>';
+  ASM_OPEX_BUCKETS.forEach(function(f){
+    var v=s.opex[f.key];
+    html+='<div class="asm-field"><div class="asm-field-top"><label>'+f.label+'</label><span class="asm-val" id="asm_'+key+'_opex_'+f.key+'_val">'+asmFmt(v)+'</span></div>'+
+      '<input type="number" id="asm_'+key+'_opex_'+f.key+'" min="0" max="2000000" step="500" value="'+v+'"></div>';
+  });
+  html+='<div class="asm-sec">Balance sheet</div>';
+  ASM_BS_FIELDS.forEach(function(f){
+    var v=s.bs[f.key];
+    html+='<div class="asm-field"><div class="asm-field-top"><label>'+f.label+'</label><span class="asm-val" id="asm_'+key+'_bs_'+f.key+'_val">'+asmFmt(v)+'</span></div>'+
+      '<input type="number" id="asm_'+key+'_bs_'+f.key+'" min="'+f.min+'" max="'+f.max+'" step="'+f.step+'" value="'+v+'"></div>';
+  });
+  html+='<div class="asm-sec">Cash flow plan for the year</div>';
+  ASM_CF_FIELDS.forEach(function(f){
+    var v=s.cf[f.key];
+    html+='<div class="asm-field"><div class="asm-field-top"><label>'+f.label+'</label><span class="asm-val" id="asm_'+key+'_cf_'+f.key+'_val">'+asmFmt(v)+'</span></div>'+
+      '<input type="number" id="asm_'+key+'_cf_'+f.key+'" min="'+f.min+'" max="'+f.max+'" step="'+f.step+'" value="'+v+'"></div>';
+  });
+  html+='<div class="asm-wf" id="asm_'+key+'_wf"></div>';
+  el.innerHTML=html;
+  ASM_PL_FIELDS.forEach(function(f){
+    document.getElementById("asm_"+key+"_"+f.key).addEventListener("input",function(e){ASM[key][f.key]=parseFloat(e.target.value)||0;asmUpdate();});
+  });
+  ASM_OPEX_BUCKETS.forEach(function(f){
+    document.getElementById("asm_"+key+"_opex_"+f.key).addEventListener("input",function(e){ASM[key].opex[f.key]=parseFloat(e.target.value)||0;asmUpdate();});
+  });
+  ASM_BS_FIELDS.forEach(function(f){
+    document.getElementById("asm_"+key+"_bs_"+f.key).addEventListener("input",function(e){ASM[key].bs[f.key]=parseFloat(e.target.value)||0;asmUpdate();});
+  });
+  ASM_CF_FIELDS.forEach(function(f){
+    document.getElementById("asm_"+key+"_cf_"+f.key).addEventListener("input",function(e){ASM[key].cf[f.key]=parseFloat(e.target.value)||0;asmUpdate();});
+  });
+}
+function asmRenderWaterfall(key){
+  var s=ASM[key];var r=asmCompute(s);
+  var qrPill=(r.quickRatio!=null&&r.quickRatio>=1)?"ok":"warn";
+  var drPill=(r.debtToEquity!=null&&r.debtToEquity<=4)?"ok":"warn";
+  document.getElementById("asm_"+key+"_wf").innerHTML=
+    '<div class="asm-row"><span class="l">Revenue</span><span class="v">'+asmFmt(s.revenue)+'</span></div>'+
+    '<div class="asm-row"><span class="l">Gross profit</span><span class="v">'+asmFmt(r.gp)+'</span></div>'+
+    '<div class="asm-row"><span class="l">Operating expenses</span><span class="v">'+asmFmt(r.opExTotal)+'</span></div>'+
+    '<div class="asm-row"><span class="l">Net operating income</span><span class="v">'+asmFmt(r.noi)+'</span></div>'+
+    '<div class="asm-row"><span class="l">Interest expense</span><span class="v">'+asmFmt(s.interest)+'</span></div>'+
+    '<div class="asm-row total"><span class="l">Net income</span><span class="v '+(r.ni>=0?"pos":"neg")+'">'+asmFmt(r.ni)+'</span></div>'+
+    '<div class="asm-pills"><span class="asm-pill">Net margin '+asmPct(r.margin)+'</span><span class="asm-pill">Gross margin '+asmPct(r.gm)+'</span></div>'+
+    '<div class="asm-row" style="margin-top:8px"><span class="l">Projected year-end cash</span><span class="v '+(r.projectedCash>=0?"pos":"neg")+'">'+asmFmt(r.projectedCash)+'</span></div>'+
+    '<div class="asm-pills">'+
+      '<span class="asm-pill '+qrPill+'">Quick ratio '+(r.quickRatio!=null?r.quickRatio.toFixed(2):"N/A")+'</span>'+
+      '<span class="asm-pill '+drPill+'">Debt/Equity '+(r.debtToEquity!=null?r.debtToEquity.toFixed(2)+"x":"N/A")+'</span>'+
+      '<span class="asm-pill">Total liabilities '+asmFmt(r.totalLiab)+'</span>'+
+      '<span class="asm-pill">Ending equity '+asmFmt(r.endingEquity)+'</span>'+
+    '</div>';
+}
+function asmUpdateLabels(key){
+  var s=ASM[key];
+  ASM_PL_FIELDS.forEach(function(f){
+    var v=s[f.key];
+    document.getElementById("asm_"+key+"_"+f.key+"_val").textContent=f.type==="range"?(Number.isInteger(v)?v:v.toFixed(1))+(f.suffix||""):asmFmt(v);
+  });
+  ASM_OPEX_BUCKETS.forEach(function(f){document.getElementById("asm_"+key+"_opex_"+f.key+"_val").textContent=asmFmt(s.opex[f.key]);});
+  ASM_BS_FIELDS.forEach(function(f){document.getElementById("asm_"+key+"_bs_"+f.key+"_val").textContent=asmFmt(s.bs[f.key]);});
+  ASM_CF_FIELDS.forEach(function(f){document.getElementById("asm_"+key+"_cf_"+f.key+"_val").textContent=asmFmt(s.cf[f.key]);});
+}
+function asmUpdate(){
+  ["A","B"].forEach(function(k){asmUpdateLabels(k);asmRenderWaterfall(k);});
+  var niA=asmCompute(ASM.A).ni,niB=asmCompute(ASM.B).ni;
+  var delta=niA-niB;
+  var dEl=document.getElementById("asmDeltaVal");
+  dEl.textContent=(delta>=0?"+":"-")+asmFmt(Math.abs(delta)).replace("$","$");
+  dEl.style.color=delta>=0?"var(--success)":"var(--danger)";
+  document.getElementById("asmDeltaSub").textContent="Scenario A: "+asmFmt(niA)+" net income  →  Scenario B: "+asmFmt(niB)+" net income";
+}
+// Generic loader: pulls a calcKPIs()-style result object into either Scenario A or B.
+// Operating expenses aren't broken into categories by the QuickBooks parser, so the
+// full reported opEx lands in "Other / unallocated" and the named buckets reset to 0 —
+// the total stays accurate, and you can manually redistribute it into categories after.
+function asmLoadResultInto(scenKey,result,label){
+  if(!result||!result.raw){alert("No data available for that period yet.");return;}
+  var d=result.raw;
+  var rev=d.revenue||ASM[scenKey].revenue;
+  var cogsPct=(d.cogs!=null&&d.revenue)?(d.cogs/d.revenue*100):ASM[scenKey].cogsPct;
+  var interest=d.interest!=null?d.interest:ASM[scenKey].interest;
+  ASM[scenKey].revenue=Math.round(rev);
+  ASM[scenKey].cogsPct=Math.round(cogsPct*10)/10;
+  ASM[scenKey].interest=Math.round(interest);
+  ASM_OPEX_BUCKETS.forEach(function(b){ASM[scenKey].opex[b.key]=0;});
+  ASM[scenKey].opex.otherUnallocated=d.opEx!=null?Math.round(d.opEx):0;
+  if(d.cash!=null)ASM[scenKey].bs.cash=Math.round(d.cash);
+  if(d.ar!=null)ASM[scenKey].bs.ar=Math.round(d.ar);
+  if(d.inventory!=null)ASM[scenKey].bs.inventory=Math.round(d.inventory);
+  if(d.ap!=null)ASM[scenKey].bs.ap=Math.round(d.ap);
+  if(d.currentLiab!=null&&d.ap!=null)ASM[scenKey].bs.otherCurrentLiab=Math.round(Math.max(d.currentLiab-d.ap,0));
+  if(d.longDebt!=null)ASM[scenKey].bs.longDebt=Math.round(d.longDebt);
+  if(d.equity!=null)ASM[scenKey].bs.startingEquity=Math.round(d.equity-(d.netIncome||0));
+  asmRenderCard(scenKey,label);
+  asmUpdate();
+  sw("assumptions");
+}
+// Pull the currently loaded single period (LAST / LCO / LPER) into Scenario A
+function asmLoadFromCurrent(){
+  if(!LAST){alert("No period loaded yet. Import data or load a period from History first.");return;}
+  asmLoadResultInto("A",LAST,LCO+" — "+LPER+" (loaded)");
+}
+// Pull Compare Periods' Period A / Period B directly into Scenario A / Scenario B
+function asmLoadFromCompareA(){
+  if(!CMPR.a){alert("Run a comparison in the Compare Periods tab first.");return;}
+  asmLoadResultInto("A",CMPR.a,CMPR.labelA+" (from Compare)");
+}
+function asmLoadFromCompareB(){
+  if(!CMPR.b){alert("Run a comparison in the Compare Periods tab first.");return;}
+  asmLoadResultInto("B",CMPR.b,CMPR.labelB+" (from Compare)");
+}
+async function asmRunAI(){
+  var btn=document.getElementById("asmAiBtn");
+  var body=document.getElementById("asmAiBody");
+  btn.disabled=true;btn.textContent="Thinking...";
+  body.style.color="var(--ink3)";body.textContent="Reading both scenarios...";
+  var a=asmCompute(ASM.A),b=asmCompute(ASM.B);
+  var payload={scenarioA:{inputs:ASM.A,outputs:a},scenarioB:{inputs:ASM.B,outputs:b}};
+  var prompt="You are a blunt, no-fluff CFO advisor reviewing two P&L + balance sheet scenarios for a small business. Here is the data as JSON:\n\n"+JSON.stringify(payload,null,2)+"\n\nGive a short report (under 280 words, plain text, no markdown headers) covering: 1) which scenario is actually safer given BOTH the P&L and the balance sheet (liquidity, debt), not just net income, 2) the single biggest risk visible in the numbers, 3) one concrete action to take in the next 90 days. Be direct and specific to the numbers, not generic advice.";
+  try{
+    var response=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})
+    });
+    var data=await response.json();
+    var textBlocks=(data.content||[]).filter(function(c){return c.type==="text";}).map(function(c){return c.text;});
+    body.style.color="var(--ink2)";
+    body.textContent=textBlocks.join("\n")||"No response returned.";
+  }catch(err){
+    body.style.color="var(--ink3)";
+    body.textContent="Couldn't reach the AI layer right now. Try again in a moment.";
+  }
+  btn.disabled=false;btn.textContent="Generate report";
+}
+
 // ── NAV ───────────────────────────────────────────────────────────────────────
-var TABS=["import","kpis","analysis","benchmark","recommendations","compare","history","guide"];
+var TABS=["import","kpis","analysis","benchmark","recommendations","compare","assumptions","history","guide"];
 function sw(n){
   TABS.forEach(function(x,i){document.querySelectorAll(".ntab")[i].classList.remove("on");document.getElementById("p-"+x).classList.remove("on");});
   document.querySelectorAll(".ntab")[TABS.indexOf(n)].classList.add("on");
@@ -2457,6 +2735,9 @@ function renderGuide(){
 HIST.forEach(function(h){if(h.monthKey===undefined)h.monthKey=deriveMonthKey(h);});
 renderHist();
 populateHeaderSelects();
+asmRenderCard("A","Scenario A");
+asmRenderCard("B","Scenario B");
+asmUpdate();
 </script>
 </body>
 </html>
