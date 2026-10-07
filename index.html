@@ -250,6 +250,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
     </select>
     <button class="btnex" id="hdrRun" onclick="onHeaderRange()" style="background:#1a5cff" disabled>Run</button>
     <select class="isel" id="industry" onchange="onInd()">
+      <option value="industrial">Industrial / PPE Supply Distribution</option>
       <option value="ecommerce">E-commerce / Online Retail</option>
       <option value="retail">Brick &amp; Mortar Retail</option>
       <option value="saas">SaaS / Software</option>
@@ -589,6 +590,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
       <div class="dtitle">&#128200; Trends</div>
       <div class="dsub">Which way the business is moving, month over month or quarter over quarter. Every number comes from the periods you imported.</div>
     </div>
+    <div class="exrow"><button class="btnex" style="background:#c0392b" onclick="exportTrendsPDF()">Export PDF</button></div>
   </div>
   <div id="tr-empty" class="empty"><div class="ico">&#128200;</div><p>Import at least two months for one company to see trends.</p></div>
   <div id="tr-controls" style="display:none">
@@ -642,13 +644,15 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 </div>
 <script>
 // ── BENCHMARKS ────────────────────────────────────────────────────────────────
-var B={ecommerce:{name:"E-commerce / Online Retail",grossMargin:{g:42,o:30,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.8,o:1.2,li:false},quickRatio:{g:1.0,o:0.7,li:false},debtEquity:{g:0.4,o:0.9,li:true},debtAsset:{g:0.3,o:0.5,li:true},roe:{g:18,o:10,li:false},roa:{g:8,o:4,li:false},roi:{g:10,o:5,li:false},dso:{g:18,o:30,li:true},inventoryTurnover:{g:8,o:5,li:false},totalAssetTurnover:{g:1.6,o:1.0,li:false},salesPerEmployee:{g:250000,o:120000,li:false},contributionMargin:{g:42,o:30,li:false},breakevenPct:{g:45,o:65,li:true}},retail:{name:"Brick & Mortar Retail",grossMargin:{g:35,o:25,li:false},netMargin:{g:4,o:2,li:false},opMargin:{g:6,o:3,li:false},ebitdaMargin:{g:9,o:5,li:false},currentRatio:{g:1.6,o:1.2,li:false},quickRatio:{g:0.6,o:0.4,li:false},debtEquity:{g:0.6,o:1.2,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:14,o:7,li:false},roa:{g:6,o:3,li:false},roi:{g:8,o:4,li:false},dso:{g:8,o:18,li:true},inventoryTurnover:{g:10,o:6,li:false},totalAssetTurnover:{g:1.9,o:1.3,li:false},salesPerEmployee:{g:180000,o:90000,li:false},contributionMargin:{g:35,o:22,li:false},breakevenPct:{g:50,o:70,li:true}},saas:{name:"SaaS / Software",grossMargin:{g:75,o:60,li:false},netMargin:{g:18,o:6,li:false},opMargin:{g:20,o:8,li:false},ebitdaMargin:{g:22,o:12,li:false},currentRatio:{g:2.2,o:1.5,li:false},quickRatio:{g:1.8,o:1.2,li:false},debtEquity:{g:0.2,o:0.6,li:true},debtAsset:{g:0.2,o:0.4,li:true},roe:{g:22,o:12,li:false},roa:{g:12,o:6,li:false},roi:{g:15,o:8,li:false},dso:{g:28,o:45,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:0.9,o:0.5,li:false},salesPerEmployee:{g:350000,o:180000,li:false},contributionMargin:{g:75,o:60,li:false},breakevenPct:{g:30,o:55,li:true}},manufacturing:{name:"Manufacturing",grossMargin:{g:32,o:22,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.9,o:1.4,li:false},quickRatio:{g:0.9,o:0.6,li:false},debtEquity:{g:0.7,o:1.4,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:15,o:8,li:false},roa:{g:7,o:4,li:false},roi:{g:9,o:5,li:false},dso:{g:32,o:50,li:true},inventoryTurnover:{g:7,o:4,li:false},totalAssetTurnover:{g:0.9,o:0.6,li:false},salesPerEmployee:{g:220000,o:110000,li:false},contributionMargin:{g:32,o:20,li:false},breakevenPct:{g:50,o:70,li:true}},wholesale:{name:"Wholesale / Distribution",grossMargin:{g:22,o:14,li:false},netMargin:{g:4,o:2,li:false},opMargin:{g:5,o:2.5,li:false},ebitdaMargin:{g:7,o:4,li:false},currentRatio:{g:1.7,o:1.3,li:false},quickRatio:{g:0.8,o:0.5,li:false},debtEquity:{g:0.6,o:1.1,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:13,o:7,li:false},roa:{g:5,o:3,li:false},roi:{g:7,o:4,li:false},dso:{g:28,o:42,li:true},inventoryTurnover:{g:9,o:5,li:false},totalAssetTurnover:{g:1.6,o:1.1,li:false},salesPerEmployee:{g:600000,o:300000,li:false},contributionMargin:{g:22,o:14,li:false},breakevenPct:{g:55,o:75,li:true}},services:{name:"Professional Services",grossMargin:{g:65,o:48,li:false},netMargin:{g:18,o:9,li:false},opMargin:{g:22,o:12,li:false},ebitdaMargin:{g:25,o:14,li:false},currentRatio:{g:2.0,o:1.4,li:false},quickRatio:{g:1.6,o:1.1,li:false},debtEquity:{g:0.3,o:0.7,li:true},debtAsset:{g:0.2,o:0.4,li:true},roe:{g:22,o:13,li:false},roa:{g:13,o:7,li:false},roi:{g:16,o:9,li:false},dso:{g:28,o:45,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:1.1,o:0.7,li:false},salesPerEmployee:{g:180000,o:90000,li:false},contributionMargin:{g:65,o:48,li:false},breakevenPct:{g:30,o:50,li:true}},restaurant:{name:"Restaurant / Hospitality",grossMargin:{g:68,o:58,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.3,o:0.9,li:false},quickRatio:{g:0.6,o:0.3,li:false},debtEquity:{g:0.9,o:1.8,li:true},debtAsset:{g:0.5,o:0.7,li:true},roe:{g:18,o:9,li:false},roa:{g:9,o:4,li:false},roi:{g:11,o:6,li:false},dso:{g:4,o:12,li:true},inventoryTurnover:{g:22,o:14,li:false},totalAssetTurnover:{g:1.3,o:0.9,li:false},salesPerEmployee:{g:65000,o:40000,li:false},contributionMargin:{g:68,o:55,li:false},breakevenPct:{g:55,o:72,li:true}},realestate:{name:"Real Estate",grossMargin:{g:45,o:28,li:false},netMargin:{g:18,o:9,li:false},opMargin:{g:22,o:12,li:false},ebitdaMargin:{g:28,o:16,li:false},currentRatio:{g:1.6,o:1.1,li:false},quickRatio:{g:0.9,o:0.6,li:false},debtEquity:{g:1.8,o:3.5,li:true},debtAsset:{g:0.55,o:0.72,li:true},roe:{g:11,o:6,li:false},roa:{g:4,o:2,li:false},roi:{g:8,o:4,li:false},dso:{g:12,o:25,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:0.3,o:0.2,li:false},salesPerEmployee:{g:500000,o:250000,li:false},contributionMargin:{g:45,o:28,li:false},breakevenPct:{g:40,o:60,li:true}},healthcare:{name:"Healthcare / Medical",grossMargin:{g:45,o:32,li:false},netMargin:{g:10,o:5,li:false},opMargin:{g:13,o:7,li:false},ebitdaMargin:{g:16,o:9,li:false},currentRatio:{g:2.0,o:1.4,li:false},quickRatio:{g:1.4,o:0.9,li:false},debtEquity:{g:0.5,o:1.0,li:true},debtAsset:{g:0.35,o:0.55,li:true},roe:{g:16,o:9,li:false},roa:{g:8,o:4,li:false},roi:{g:10,o:6,li:false},dso:{g:35,o:55,li:true},inventoryTurnover:{g:10,o:6,li:false},totalAssetTurnover:{g:0.8,o:0.5,li:false},salesPerEmployee:{g:200000,o:110000,li:false},contributionMargin:{g:45,o:30,li:false},breakevenPct:{g:45,o:65,li:true}},construction:{name:"Construction",grossMargin:{g:22,o:14,li:false},netMargin:{g:6,o:3,li:false},opMargin:{g:8,o:4,li:false},ebitdaMargin:{g:10,o:6,li:false},currentRatio:{g:1.6,o:1.2,li:false},quickRatio:{g:1.0,o:0.7,li:false},debtEquity:{g:0.8,o:1.6,li:true},debtAsset:{g:0.45,o:0.65,li:true},roe:{g:14,o:8,li:false},roa:{g:6,o:3,li:false},roi:{g:8,o:4,li:false},dso:{g:35,o:55,li:true},inventoryTurnover:{g:8,o:5,li:false},totalAssetTurnover:{g:1.1,o:0.7,li:false},salesPerEmployee:{g:280000,o:140000,li:false},contributionMargin:{g:22,o:14,li:false},breakevenPct:{g:50,o:70,li:true}}};
+var B={industrial:{name:"Industrial / PPE Supply Distribution",grossMargin:{g:28,o:20,li:false},netMargin:{g:4,o:2,li:false},opMargin:{g:5,o:2.5,li:false},ebitdaMargin:{g:7,o:4,li:false},currentRatio:{g:1.8,o:1.3,li:false},quickRatio:{g:0.9,o:0.6,li:false},debtEquity:{g:0.6,o:1.1,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:13,o:7,li:false},roa:{g:5,o:3,li:false},roi:{g:7,o:4,li:false},dso:{g:40,o:50,li:true},inventoryTurnover:{g:6,o:4,li:false},totalAssetTurnover:{g:1.6,o:1.1,li:false},salesPerEmployee:{g:600000,o:300000,li:false},contributionMargin:{g:28,o:20,li:false},breakevenPct:{g:55,o:75,li:true}},ecommerce:{name:"E-commerce / Online Retail",grossMargin:{g:42,o:30,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.8,o:1.2,li:false},quickRatio:{g:1.0,o:0.7,li:false},debtEquity:{g:0.4,o:0.9,li:true},debtAsset:{g:0.3,o:0.5,li:true},roe:{g:18,o:10,li:false},roa:{g:8,o:4,li:false},roi:{g:10,o:5,li:false},dso:{g:18,o:30,li:true},inventoryTurnover:{g:8,o:5,li:false},totalAssetTurnover:{g:1.6,o:1.0,li:false},salesPerEmployee:{g:250000,o:120000,li:false},contributionMargin:{g:42,o:30,li:false},breakevenPct:{g:45,o:65,li:true}},retail:{name:"Brick & Mortar Retail",grossMargin:{g:35,o:25,li:false},netMargin:{g:4,o:2,li:false},opMargin:{g:6,o:3,li:false},ebitdaMargin:{g:9,o:5,li:false},currentRatio:{g:1.6,o:1.2,li:false},quickRatio:{g:0.6,o:0.4,li:false},debtEquity:{g:0.6,o:1.2,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:14,o:7,li:false},roa:{g:6,o:3,li:false},roi:{g:8,o:4,li:false},dso:{g:8,o:18,li:true},inventoryTurnover:{g:10,o:6,li:false},totalAssetTurnover:{g:1.9,o:1.3,li:false},salesPerEmployee:{g:180000,o:90000,li:false},contributionMargin:{g:35,o:22,li:false},breakevenPct:{g:50,o:70,li:true}},saas:{name:"SaaS / Software",grossMargin:{g:75,o:60,li:false},netMargin:{g:18,o:6,li:false},opMargin:{g:20,o:8,li:false},ebitdaMargin:{g:22,o:12,li:false},currentRatio:{g:2.2,o:1.5,li:false},quickRatio:{g:1.8,o:1.2,li:false},debtEquity:{g:0.2,o:0.6,li:true},debtAsset:{g:0.2,o:0.4,li:true},roe:{g:22,o:12,li:false},roa:{g:12,o:6,li:false},roi:{g:15,o:8,li:false},dso:{g:28,o:45,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:0.9,o:0.5,li:false},salesPerEmployee:{g:350000,o:180000,li:false},contributionMargin:{g:75,o:60,li:false},breakevenPct:{g:30,o:55,li:true}},manufacturing:{name:"Manufacturing",grossMargin:{g:32,o:22,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.9,o:1.4,li:false},quickRatio:{g:0.9,o:0.6,li:false},debtEquity:{g:0.7,o:1.4,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:15,o:8,li:false},roa:{g:7,o:4,li:false},roi:{g:9,o:5,li:false},dso:{g:32,o:50,li:true},inventoryTurnover:{g:7,o:4,li:false},totalAssetTurnover:{g:0.9,o:0.6,li:false},salesPerEmployee:{g:220000,o:110000,li:false},contributionMargin:{g:32,o:20,li:false},breakevenPct:{g:50,o:70,li:true}},wholesale:{name:"Wholesale / Distribution",grossMargin:{g:22,o:14,li:false},netMargin:{g:4,o:2,li:false},opMargin:{g:5,o:2.5,li:false},ebitdaMargin:{g:7,o:4,li:false},currentRatio:{g:1.7,o:1.3,li:false},quickRatio:{g:0.8,o:0.5,li:false},debtEquity:{g:0.6,o:1.1,li:true},debtAsset:{g:0.4,o:0.6,li:true},roe:{g:13,o:7,li:false},roa:{g:5,o:3,li:false},roi:{g:7,o:4,li:false},dso:{g:28,o:42,li:true},inventoryTurnover:{g:9,o:5,li:false},totalAssetTurnover:{g:1.6,o:1.1,li:false},salesPerEmployee:{g:600000,o:300000,li:false},contributionMargin:{g:22,o:14,li:false},breakevenPct:{g:55,o:75,li:true}},services:{name:"Professional Services",grossMargin:{g:65,o:48,li:false},netMargin:{g:18,o:9,li:false},opMargin:{g:22,o:12,li:false},ebitdaMargin:{g:25,o:14,li:false},currentRatio:{g:2.0,o:1.4,li:false},quickRatio:{g:1.6,o:1.1,li:false},debtEquity:{g:0.3,o:0.7,li:true},debtAsset:{g:0.2,o:0.4,li:true},roe:{g:22,o:13,li:false},roa:{g:13,o:7,li:false},roi:{g:16,o:9,li:false},dso:{g:28,o:45,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:1.1,o:0.7,li:false},salesPerEmployee:{g:180000,o:90000,li:false},contributionMargin:{g:65,o:48,li:false},breakevenPct:{g:30,o:50,li:true}},restaurant:{name:"Restaurant / Hospitality",grossMargin:{g:68,o:58,li:false},netMargin:{g:7,o:3,li:false},opMargin:{g:10,o:5,li:false},ebitdaMargin:{g:14,o:8,li:false},currentRatio:{g:1.3,o:0.9,li:false},quickRatio:{g:0.6,o:0.3,li:false},debtEquity:{g:0.9,o:1.8,li:true},debtAsset:{g:0.5,o:0.7,li:true},roe:{g:18,o:9,li:false},roa:{g:9,o:4,li:false},roi:{g:11,o:6,li:false},dso:{g:4,o:12,li:true},inventoryTurnover:{g:22,o:14,li:false},totalAssetTurnover:{g:1.3,o:0.9,li:false},salesPerEmployee:{g:65000,o:40000,li:false},contributionMargin:{g:68,o:55,li:false},breakevenPct:{g:55,o:72,li:true}},realestate:{name:"Real Estate",grossMargin:{g:45,o:28,li:false},netMargin:{g:18,o:9,li:false},opMargin:{g:22,o:12,li:false},ebitdaMargin:{g:28,o:16,li:false},currentRatio:{g:1.6,o:1.1,li:false},quickRatio:{g:0.9,o:0.6,li:false},debtEquity:{g:1.8,o:3.5,li:true},debtAsset:{g:0.55,o:0.72,li:true},roe:{g:11,o:6,li:false},roa:{g:4,o:2,li:false},roi:{g:8,o:4,li:false},dso:{g:12,o:25,li:true},inventoryTurnover:{g:null,o:null,li:false},totalAssetTurnover:{g:0.3,o:0.2,li:false},salesPerEmployee:{g:500000,o:250000,li:false},contributionMargin:{g:45,o:28,li:false},breakevenPct:{g:40,o:60,li:true}},healthcare:{name:"Healthcare / Medical",grossMargin:{g:45,o:32,li:false},netMargin:{g:10,o:5,li:false},opMargin:{g:13,o:7,li:false},ebitdaMargin:{g:16,o:9,li:false},currentRatio:{g:2.0,o:1.4,li:false},quickRatio:{g:1.4,o:0.9,li:false},debtEquity:{g:0.5,o:1.0,li:true},debtAsset:{g:0.35,o:0.55,li:true},roe:{g:16,o:9,li:false},roa:{g:8,o:4,li:false},roi:{g:10,o:6,li:false},dso:{g:35,o:55,li:true},inventoryTurnover:{g:10,o:6,li:false},totalAssetTurnover:{g:0.8,o:0.5,li:false},salesPerEmployee:{g:200000,o:110000,li:false},contributionMargin:{g:45,o:30,li:false},breakevenPct:{g:45,o:65,li:true}},construction:{name:"Construction",grossMargin:{g:22,o:14,li:false},netMargin:{g:6,o:3,li:false},opMargin:{g:8,o:4,li:false},ebitdaMargin:{g:10,o:6,li:false},currentRatio:{g:1.6,o:1.2,li:false},quickRatio:{g:1.0,o:0.7,li:false},debtEquity:{g:0.8,o:1.6,li:true},debtAsset:{g:0.45,o:0.65,li:true},roe:{g:14,o:8,li:false},roa:{g:6,o:3,li:false},roi:{g:8,o:4,li:false},dso:{g:35,o:55,li:true},inventoryTurnover:{g:8,o:5,li:false},totalAssetTurnover:{g:1.1,o:0.7,li:false},salesPerEmployee:{g:280000,o:140000,li:false},contributionMargin:{g:22,o:14,li:false},breakevenPct:{g:50,o:70,li:true}}};
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 var IND="ecommerce",LAST=null,LINS=null,LRECS=null,LPER="",LCO="";
 var FD={pl:null,bs:null,cf:null},RTYPE="monthly";
 var HIST=[];
 try{HIST=JSON.parse(localStorage.getItem("finiq_h")||"[]");}catch(e){}
+// The industry picked in the top bar is remembered as the default for new imports
+try{var _di=localStorage.getItem("finiq_ind");if(_di&&B[_di])IND=_di;}catch(e){}
 // Comparison state
 var CFD={a:{pl:null,bs:null,cf:null},b:{pl:null,bs:null,cf:null}};
 var CMPR={a:null,b:null,labelA:"",labelB:"",recs:{decl:[],newIssue:[],resolved:[],impr:[]}};
@@ -821,7 +825,7 @@ function calcKPIs(plT,bsT,cfT,emp){
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function gs(val,bk){if(val==null||isNaN(val))return"na";if(!bk||bk.g==null)return"na";if(bk.li){if(val<=bk.g)return"good";if(val<=bk.o)return"warn";return"bad";}if(val>=bk.g)return"good";if(val>=bk.o)return"warn";return"bad";}
 function sl(s){return{good:"Above target",warn:"Below target",bad:"Needs attention",na:"N/A"}[s]||"N/A";}
-function fmt(v,t){if(v==null||isNaN(v))return"N/A";if(t==="pct")return v.toFixed(1)+"%";if(t==="ratio")return v.toFixed(2)+"x";if(t==="turns")return v.toFixed(1)+"x/yr";if(t==="days")return Math.round(v)+" days";if(t==="usd")return"$"+Math.round(v).toLocaleString();return String(v);}
+function fmt(v,t){if(v==null||isNaN(v))return"N/A";if(t==="pct")return v.toFixed(1)+"%";if(t==="ratio")return v.toFixed(2)+"x";if(t==="turns")return v.toFixed(1)+"x/yr";if(t==="days")return Math.round(v)+" days";if(t==="usd")return(v<0?"-$":"$")+Math.abs(Math.round(v)).toLocaleString();return String(v);}
 
 function calcScore(r){
   var b=B[IND];
@@ -1466,9 +1470,10 @@ function saveComparisonToHistory(){
 }
 
 // ── PDF HELPERS ───────────────────────────────────────────────────────────────
-function pdfInit(JsPDF,title,subtitle){
-  var doc=new JsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-  var W=210,ml=14,mr=14,usable=W-ml-mr;
+function pdfInit(JsPDF,title,subtitle,orient){
+  var land=orient==="landscape";
+  var doc=new JsPDF({orientation:land?"landscape":"portrait",unit:"mm",format:"a4"});
+  var W=land?297:210,H=land?210:297,ml=14,mr=14,usable=W-ml-mr;
   doc.setFillColor(15,17,23);
   doc.rect(0,0,W,18,"F");
   doc.setFillColor(26,92,255);
@@ -1491,10 +1496,10 @@ function pdfInit(JsPDF,title,subtitle){
     subLines.forEach(function(sl){doc.text(String(sl),ml,y);y+=5;});
   }
   doc.setDrawColor(220,220,218);doc.setLineWidth(0.3);doc.line(ml,y,W-mr,y);y+=5;
-  return{doc,W,ml,mr,usable,y:function(){return y;},setY:function(v){y=v;},addY:function(v){y+=v;}};
+  return{doc,W,H,ml,mr,usable,limit:H-17,y:function(){return y;},setY:function(v){y=v;},addY:function(v){y+=v;}};
 }
 function pdfCheckPage(ctx,needed){
-  if(ctx.y()+needed>280){ctx.doc.addPage();ctx.setY(16);}
+  if(ctx.y()+needed>(ctx.limit||280)){ctx.doc.addPage();ctx.setY(16);}
 }
 function pdfSectionTitle(ctx,text){
   pdfCheckPage(ctx,14);
@@ -2569,45 +2574,254 @@ function trAxis(v,t){
 }
 // The three numbers that open the debt vs. growth conversation.
 // Always calculated from the individual months in the range.
-function trBigHtml(months){
-  var fcf=months.map(function(h){return h.kpis&&h.kpis.freeCashFlow!=null?h.kpis.freeCashFlow:null;}).filter(function(v){return v!=null;});
-  var avgF=fcf.length?fcf.reduce(function(s,x){return s+x;},0)/fcf.length:null;
-  var lastRec=months[months.length-1];
+function trNN(v){return v!=null&&!isNaN(v);}
+function trSum(a){return a.reduce(function(s,x){return s+x;},0);}
+function trRaw(h,k){return h.kpis&&h.kpis.raw&&h.kpis.raw[k]!=null?h.kpis.raw[k]:null;}
+function trBigNumbers(months){
+  var ocf=months.map(function(h){return trRaw(h,"ocf");}).filter(trNN);
+  var avgOcf=ocf.length?trSum(ocf)/ocf.length:null;
+  // Equipment purchases only count in months that have a cash flow statement
+  var capexArr=months.filter(function(h){return trRaw(h,"ocf")!=null;}).map(function(h){var c=trRaw(h,"capex");return c!=null?Math.abs(c):0;});
+  var avgCapex=capexArr.length?trSum(capexArr)/capexArr.length:null;
+  var avgF=avgOcf!=null?avgOcf-(avgCapex||0):null;
+  var firstRec=months[0],lastRec=months[months.length-1];
   var last=lastRec.kpis&&lastRec.kpis.raw?lastRec.kpis.raw:{};
+  var cashFirst=trRaw(firstRec,"cash"),cashLast=trRaw(lastRec,"cash");
+  var cashChange=cashFirst!=null&&cashLast!=null?cashLast-cashFirst:null;
   var debt=last.totalLiab!=null?last.totalLiab-(last.ap||0):null;
   var payoff=avgF!=null&&avgF>0&&debt!=null&&debt>0?debt/avgF:null;
-  var revs=months.map(function(h){return h.kpis&&h.kpis.raw&&h.kpis.raw.revenue!=null?h.kpis.raw.revenue:null;}).filter(function(v){return v!=null;});
-  var annRev=revs.length?revs.reduce(function(s,x){return s+x;},0)/revs.length*12:null;
-  var wc=(last.ar!=null||last.inventory!=null)?(last.ar||0)+(last.inventory||0)-(last.ap||0):null;
-  var per100=wc!=null&&annRev>0?wc/annRev*100000:null;
-
-  var c1Val=avgF==null?"N/A":fmt(avgF,"usd");
-  var c1Col=avgF==null?"var(--ink3)":avgF>=0?"var(--success)":"var(--danger)";
-  var c1Note=avgF==null
-    ?"No cash flow statements in this range. Upload them with each month to see this number."
-    :"Average per month across "+fcf.length+" of "+months.length+" months with cash flow data. Operating cash flow minus equipment purchases. Interest is already paid out of this, so this is what's left for paying down debt or funding growth.";
-
-  var c2Val,c2Col="var(--ink)";
-  if(payoff!=null){c2Val=payoff>=24?(payoff/12).toFixed(1)+" years":Math.round(payoff)+" months";c2Col=payoff>60?"var(--danger)":payoff>24?"var(--warn)":"var(--success)";}
-  else if(debt!=null&&avgF!=null&&avgF<=0){c2Val="Not at this rate";c2Col="var(--danger)";}
-  else c2Val="N/A";
-  var c2Note=debt!=null
-    ?"Debt counted as total liabilities minus accounts payable: "+fmt(debt,"usd")+" as of "+escH(lastRec.period)+". Assumes every dollar of free cash flow goes to debt and nothing to growth."+(avgF!=null&&avgF<=0?" Free cash flow is zero or negative, so operations are not paying debt down.":"")
-    :"Balance sheet data missing for the last month in this range.";
-
-  var c3Val=per100!=null?fmt(per100,"usd"):"N/A";
-  var c3Note=per100!=null
-    ?"For every $100K of added yearly revenue, about this much cash gets locked in receivables and inventory (net of payables) before it turns into profit. Based on "+fmt(wc,"usd")+" tied up against a "+fmt(annRev,"usd")+" yearly revenue run rate."
-    :"Needs receivables, inventory and revenue data.";
-
-  function card(title,val,col,note){
-    return'<div class="tr-bigcard"><div class="lbl" style="margin:0">'+title+'</div><div class="tr-bigval" style="color:'+col+'">'+val+'</div><div class="tr-bignote">'+note+'</div></div>';
+  var revs=months.map(function(h){return trRaw(h,"revenue");}).filter(trNN);
+  var annRev=revs.length?trSum(revs)/revs.length*12:null;
+  var cogsArr=months.map(function(h){return trRaw(h,"cogs");}).filter(trNN);
+  var annCogs=cogsArr.length?trSum(cogsArr)/cogsArr.length*12:null;
+  // Cash growth ties up. Conservative: receivables + inventory, no supplier credit.
+  // Optimistic: minus payables, which assumes suppliers extend more credit as sales grow.
+  var hasWC=last.ar!=null||last.inventory!=null;
+  var wcGross=hasWC?(last.ar||0)+(last.inventory||0):null;
+  var wcNet=hasWC?wcGross-(last.ap||0):null;
+  var per100=wcGross!=null&&annRev>0?wcGross/annRev*100000:null;
+  var per100Net=wcNet!=null&&annRev>0?wcNet/annRev*100000:null;
+  // Net margin across the whole range
+  var niT=0,rvT=0,has=false;
+  months.forEach(function(h){var ni=trRaw(h,"netIncome"),rv=trRaw(h,"revenue");if(ni!=null&&rv){niT+=ni;rvT+=rv;has=true;}});
+  var nm=has&&rvT?niT/rvT*100:null;
+  var profit100=nm!=null?nm/100*100000:null;
+  var earnBack=per100!=null&&per100>0&&profit100!=null&&profit100>0?per100/profit100:null;
+  return{fcfCount:ocf.length,avgOcf:avgOcf,avgCapex:avgCapex,avgF:avgF,firstRec:firstRec,lastRec:lastRec,last:last,
+    cashFirst:cashFirst,cashLast:cashLast,cashChange:cashChange,debt:debt,payoff:payoff,annRev:annRev,annCogs:annCogs,
+    wcGross:wcGross,wcNet:wcNet,per100:per100,per100Net:per100Net,nm:nm,profit100:profit100,earnBack:earnBack};
+}
+function trPayoffText(p){return p>=24?(p/12).toFixed(1)+" years":Math.round(p)+" months";}
+// Cash went up while free cash flow says negative: a sign that QuickBooks is putting
+// debt payments (credit cards, short-term loans) inside operating cash flow, or that
+// cash came from new borrowing. Either way the number needs checking before acting on it.
+function trCashMismatch(big){return big.avgF!=null&&big.avgF<=0&&big.cashChange!=null&&big.cashChange>0;}
+function trBigCards(big,n){
+  var cards=[];
+  // 1. Free cash flow
+  var c1={title:"Free cash flow per month",val:big.avgF==null?"N/A":fmt(big.avgF,"usd"),
+    col:big.avgF==null?"var(--ink3)":big.avgF>=0?"var(--success)":"var(--danger)",suffix:""};
+  if(big.avgF==null)c1.note="No cash flow statements in this range. Upload them with each month to see this number.";
+  else{
+    c1.note="Average across "+big.fcfCount+" of "+n+" months with cash flow data: operating cash flow of "+fmt(big.avgOcf,"usd")+" minus equipment purchases of "+fmt(big.avgCapex||0,"usd")+". This is what's left each month for paying down debt or funding growth.";
+    if(trCashMismatch(big))c1.note+=" Check this: cash in the bank rose "+fmt(big.cashChange,"usd")+" over the same months. QuickBooks often counts credit card and short-term loan payments as operating cash flow, which pulls this number down.";
   }
+  cards.push(c1);
+  // 2. Time to pay off debt
+  var c2={title:"Time to pay off debt",val:"N/A",col:"var(--ink)",suffix:""};
+  if(big.payoff!=null){c2.val=trPayoffText(big.payoff);c2.col=big.payoff>60?"var(--danger)":big.payoff>24?"var(--warn)":"var(--success)";}
+  else if(big.debt!=null&&big.avgF!=null&&big.avgF<=0){c2.val="Not at this rate";c2.col="var(--danger)";}
+  c2.note=big.debt!=null
+    ?"Debt counted as total liabilities minus accounts payable: "+fmt(big.debt,"usd")+" as of "+big.lastRec.period+". Assumes every dollar of free cash flow goes to debt and nothing to growth."
+    :"Balance sheet data missing for the last month in this range.";
+  cards.push(c2);
+  // 3. Cash growth ties up
+  var c3={title:"Cash needed to grow",val:big.per100!=null?fmt(big.per100,"usd"):"N/A",col:"var(--ink)",suffix:big.per100!=null?" per $100K":""};
+  if(big.per100!=null){
+    c3.note="One-time cash that sits in receivables and inventory for every $100K of added yearly sales, based on "+fmt(big.wcGross,"usd")+" tied up today against a "+fmt(big.annRev,"usd")+" yearly sales run rate. Growing by $1M would need about "+fmt(big.per100*10,"usd")+".";
+    if(big.per100Net!=null)c3.note+=" If suppliers give more credit at today's rate, it drops to "+fmt(big.per100Net,"usd")+" per $100K. That only holds if current payables are on time.";
+    if(big.earnBack!=null)c3.note+=" At the "+big.nm.toFixed(1)+"% net margin for this range, $100K of new sales adds about "+fmt(big.profit100,"usd")+" of profit a year, so it takes about "+big.earnBack.toFixed(1)+" years to earn back that cash.";
+  }else c3.note="Needs receivables, inventory and revenue data.";
+  cards.push(c3);
+  return cards;
+}
+function trBigHtml(big,n){
   return'<div class="stitle">The conversation starters</div><div class="tr-big">'+
-    card("Free cash flow per month",c1Val,c1Col,c1Note)+
-    card("Time to pay off debt",c2Val,c2Col,c2Note)+
-    card("Cash growth ties up",c3Val+(per100!=null?'<span style="font-size:12px;font-weight:600;color:var(--ink3)"> per $100K</span>':''),"var(--ink)",c3Note)+
-  '</div>';
+    trBigCards(big,n).map(function(c){
+      return'<div class="tr-bigcard"><div class="lbl" style="margin:0">'+c.title+'</div>'+
+        '<div class="tr-bigval" style="color:'+c.col+'">'+c.val+(c.suffix?'<span style="font-size:12px;font-weight:600;color:var(--ink3)">'+c.suffix+'</span>':'')+'</div>'+
+        '<div class="tr-bignote">'+escH(c.note)+'</div></div>';
+    }).join("")+'</div>';
+}
+
+// ── TREND RECOMMENDATIONS ─────────────────────────────────────────────────────
+// Built from the monthly figures in the range. Recent values use the average of
+// the last 3 months so one odd month doesn't drive the call.
+function trRecent(vals){var v=vals.filter(trNN);if(!v.length)return null;v=v.slice(-3);return trSum(v)/v.length;}
+function trLatest(vals){for(var i=vals.length-1;i>=0;i--)if(trNN(vals[i]))return vals[i];return null;}
+function trMetric(k){var all=TR_DEBT.concat(TR_GROW);for(var i=0;i<all.length;i++)if(all[i].k===k)return all[i];return null;}
+function trSeries(months,k){var m=trMetric(k);return months.map(function(h){return trVal(h.kpis,m);});}
+function trRecs(months,ind,big){
+  var b=B[ind],out=[];
+  function add(level,title,why,steps){out.push({level:level,title:title,why:why,steps:steps});}
+  var annRev=big.annRev||0;
+  var fcfDir=trDirection(trSeries(months,"freeCashFlow"),"up");
+  var revDir=trDirection(trSeries(months,"revenue"),"up");
+
+  // Cash generation
+  if(big.avgF!=null){
+    if(trCashMismatch(big))add("watch","Cash flow numbers need checking",
+      "Free cash flow averaged "+fmt(big.avgF,"usd")+" a month, yet cash in the bank rose "+fmt(big.cashChange,"usd")+". Either QuickBooks is counting debt payments (credit cards, short-term loans) as operating cash flow, or cash came from new borrowing.",
+      ["Open one month's cash flow statement and look at what sits under operating activities.","If credit card or loan payments are there, read free cash flow as cash available after those payments.","If cash came from borrowing, that is not cash the business produced."]);
+    else if(big.avgF<0)add("act","Operations are using up cash",
+      "Free cash flow averaged "+fmt(big.avgF,"usd")+" a month. Neither debt paydown nor growth is funded by the business right now.",
+      ["Find the biggest cash drains on the cash flow statement: inventory build, slow collections, owner draws.","Freeze non-essential spending until free cash flow is positive two months in a row.","Hold growth spending, since it would be funded by debt."]);
+    else if(revDir==="improved"&&fcfDir==="declined")add("act","Sales are growing but cash is not",
+      "Revenue is trending up while free cash flow is trending down. Growth is being paid for out of cash, usually through bigger receivables or inventory.",
+      ["Compare how fast receivables and inventory grew against sales.","Keep new customers on the same payment terms as existing ones.","Grow only as fast as cash flow can fund."]);
+    else if(fcfDir==="declined")add("watch","Free cash flow is shrinking",
+      "Still positive at "+fmt(big.avgF,"usd")+" a month on average, but recent months are lower than earlier ones.",
+      ["Check whether receivables or inventory grew faster than sales.","Set a monthly floor for free cash flow and review it each month."]);
+    else add("good","The business is producing cash",
+      "Free cash flow averaged "+fmt(big.avgF,"usd")+" a month"+(fcfDir==="improved"?" and is trending up":"")+". This is the money available for the debt versus growth decision.",
+      ["Decide on purpose how each month's amount is split between debt and growth."]);
+  }
+
+  // Debt payoff
+  if(big.payoff!=null){
+    if(big.payoff>60)add("act","Debt would take "+trPayoffText(big.payoff)+" to clear at today's cash flow",
+      fmt(big.debt,"usd")+" of debt against "+fmt(big.avgF,"usd")+" a month of free cash flow, even with every dollar going to debt.",
+      ["Raise free cash flow first (margin, collections, inventory), since paydown speed depends on it.","Pay the highest-interest balances first: credit cards and lines before term loans.","Avoid new debt to fund growth until payoff is under 5 years."]);
+    else if(big.payoff>24)add("watch","Debt is manageable but slow to clear: about "+trPayoffText(big.payoff),
+      "At "+fmt(big.avgF,"usd")+" a month, "+fmt(big.debt,"usd")+" of debt takes several years even with all free cash flow applied.",
+      ["Pick a split, for example 60% debt and 40% growth, and track it monthly.","Pay the highest-interest balances first."]);
+    else add("good","Debt could be cleared in about "+trPayoffText(big.payoff),
+      "Cash flow comfortably covers the debt load.",
+      ["There is room to fund growth while still paying debt down."]);
+  }
+
+  // Gross margin
+  var gmR=trRecent(trSeries(months,"grossMargin")),gb=b.grossMargin;
+  if(gmR!=null&&gb&&gb.g!=null){
+    var pt=annRev*0.01;
+    if(gmR<gb.o)add("act","Gross margin of "+gmR.toFixed(1)+"% is below the "+gb.o+"% floor",
+      "The target for "+b.name+" is "+gb.g+"%. At the current sales run rate, each point of gross margin is worth about "+fmt(pt,"usd")+" a year.",
+      ["Rank products by gross margin and reprice or drop the bottom group.","Renegotiate cost with the top suppliers by spend.","Check whether shipping and fulfillment costs inside cost of goods can be passed on or reduced."]);
+    else if(gmR<gb.g)add("watch","Gross margin of "+gmR.toFixed(1)+"% is under the "+gb.g+"% target",
+      "Closing the gap is worth about "+fmt(pt*(gb.g-gmR),"usd")+" a year at the current sales run rate.",
+      ["Steer sales toward the higher-margin product lines.","Review pricing on the top sellers every quarter."]);
+    else add("good","Gross margin of "+gmR.toFixed(1)+"% meets the "+gb.g+"% target",
+      "Pricing and product cost are in line with the industry.",
+      ["Review pricing before taking on lower-margin volume."]);
+  }
+
+  // Net margin
+  var nmR=trRecent(trSeries(months,"netMargin")),nb=b.netMargin;
+  if(nmR!=null&&nb&&nb.g!=null){
+    var gap=gmR!=null?" Overhead and interest take "+(gmR-nmR).toFixed(1)+" points of the "+gmR.toFixed(1)+"% gross margin.":"";
+    if(nmR<nb.o)add("act","Net margin of "+nmR.toFixed(1)+"% leaves very little room",
+      "The floor for "+b.name+" is "+nb.o+"%."+gap,
+      ["List operating expenses largest to smallest and challenge the top three.","Count interest in the debt decision: paying down expensive debt raises net margin directly."]);
+    else if(nmR<nb.g)add("watch","Net margin of "+nmR.toFixed(1)+"% is under the "+nb.g+"% target",
+      "Each point of net margin is worth about "+fmt(annRev*0.01,"usd")+" a year."+gap,
+      ["Hold overhead flat while sales grow so more of each dollar reaches the bottom line."]);
+    else add("good","Net margin of "+nmR.toFixed(1)+"% meets the "+nb.g+"% target",
+      "The business keeps an industry-normal share of each sale.",
+      ["Keep overhead growing slower than sales."]);
+  }
+
+  // Collections
+  var dsoS=trSeries(months,"dso"),dsoR=trRecent(dsoS),db=b.dso,dsoDir=trDirection(dsoS,"down");
+  if(dsoR!=null&&db&&db.g!=null){
+    var rel=annRev/365*(dsoR-db.g);
+    if(dsoR>db.o)add("act","Customers are taking "+Math.round(dsoR)+" days to pay",
+      "The target is "+db.g+" days. Getting there would free about "+fmt(rel,"usd")+" of cash.",
+      ["Send reminders before and right after the due date.","Put repeat late payers on prepay or shorter terms.","Invoice the same day the order ships."]);
+    else if(dsoR>db.g)add("watch","Collections at "+Math.round(dsoR)+" days, target is "+db.g,
+      "Hitting the target would free about "+fmt(rel,"usd")+" of cash.",
+      ["Follow up weekly on anything past due."]);
+    else if(dsoDir==="declined")add("watch","Collections are slowing",
+      "Still within target at "+Math.round(dsoR)+" days, but trending the wrong way.",
+      ["Check which customers are paying slower than before."]);
+    else add("good","Collections are fast at "+Math.round(dsoR)+" days",
+      "Within the "+db.g+"-day target, so receivables are not trapping cash.",
+      ["Keep new customers on the same terms."]);
+  }
+
+  // Inventory
+  var itR=trRecent(trSeries(months,"inventoryTurnover")),ib=b.inventoryTurnover;
+  if(itR!=null&&ib&&ib.g!=null){
+    var inv=big.last.inventory,free=inv!=null&&big.annCogs?inv-big.annCogs/ib.g:null;
+    var freeTxt=free!=null&&free>0?" Reaching "+ib.g+" turns would free about "+fmt(free,"usd")+" of cash.":"";
+    if(itR<ib.o)add("act","Inventory is turning only "+itR.toFixed(1)+" times a year",
+      "Each item sits about "+Math.round(365/itR)+" days before it sells. The target is "+ib.g+" turns."+freeTxt,
+      ["List products with more than 90 days of stock and stop reordering them.","Mark down slow movers to turn them back into cash.","Set reorder points from the last 60 days of sales, not from history."]);
+    else if(itR<ib.g)add("watch","Inventory turns of "+itR.toFixed(1)+" are under the "+ib.g+" target",
+      "Stock sits about "+Math.round(365/itR)+" days on average."+freeTxt,
+      ["Review the slowest 20 products every month."]);
+    else add("good","Inventory is turning "+itR.toFixed(1)+" times a year",
+      "At or above the "+ib.g+"-turn target, so stock is not tying up extra cash.",
+      ["Watch for stockouts on the top sellers."]);
+  }
+
+  // Liquidity (snapshot, so use the latest month)
+  var crL=trLatest(trSeries(months,"currentRatio")),cb=b.currentRatio;
+  if(crL!=null&&cb&&cb.g!=null){
+    if(crL<1)add("act","Current ratio of "+crL.toFixed(2)+"x: short-term bills exceed short-term assets",
+      "Bills due within a year are larger than cash, receivables and inventory combined.",
+      ["Build a 13-week cash forecast.","Move part of the short-term debt to longer terms if possible."]);
+    else if(crL<cb.o)add("act","Current ratio of "+crL.toFixed(2)+"x is below the "+cb.o+"x floor",
+      "There is little cushion if a big customer pays late. The target is "+cb.g+"x.",
+      ["Keep a cash reserve before adding growth spending.","Move part of the short-term debt to longer terms if possible."]);
+    else if(crL<cb.g)add("watch","Current ratio of "+crL.toFixed(2)+"x is under the "+cb.g+"x target",
+      "Adequate, but thin.",
+      ["Review it monthly alongside free cash flow."]);
+  }
+
+  // Leverage
+  if(big.last.equity!=null&&big.last.equity<=0)add("act","Equity is negative",
+    "Total liabilities are larger than total assets (equity of "+fmt(big.last.equity,"usd")+"). Lenders look at this first.",
+    ["Pause owner distributions until equity is positive.","Every dollar of debt repaid from profit moves equity toward positive."]);
+  var tl=trSeries(months,"totalLiab").filter(trNN);
+  if(tl.length>=2){
+    var ch=tl[tl.length-1]-tl[0];
+    if(ch<0)add("good","Liabilities are down "+fmt(-ch,"usd")+" over this range",
+      "From "+fmt(tl[0],"usd")+" to "+fmt(tl[tl.length-1],"usd")+".",
+      ["Keep the pace and set a year-end target."]);
+    else if(ch>0)add("watch","Liabilities are up "+fmt(ch,"usd")+" over this range",
+      "From "+fmt(tl[0],"usd")+" to "+fmt(tl[tl.length-1],"usd")+".",
+      ["Identify which new borrowing or unpaid bills drove the increase."]);
+  }
+
+  var rank={act:0,watch:1,good:2};
+  return out.map(function(r,i){r._i=i;return r;}).sort(function(a,c){return rank[a.level]-rank[c.level]||a._i-c._i;});
+}
+// The overall read that opens the debt vs. growth conversation
+function trVerdict(months,ind,big){
+  var b=B[ind];
+  var gmR=trRecent(trSeries(months,"grossMargin")),nmR=trRecent(trSeries(months,"netMargin"));
+  var marginLow=(gmR!=null&&b.grossMargin.o!=null&&gmR<b.grossMargin.o)||(nmR!=null&&b.netMargin.o!=null&&nmR<b.netMargin.o);
+  if(big.avgF==null)return{t:"Not enough cash flow data",b:"Upload the cash flow statement with each month to get a read on debt versus growth."};
+  if(trCashMismatch(big))return{t:"Check the cash flow numbers first",b:"Free cash flow shows "+fmt(big.avgF,"usd")+" a month, but cash in the bank rose "+fmt(big.cashChange,"usd")+" over the same months. Before deciding between debt and growth, confirm what QuickBooks puts under operating activities. If credit card or loan payments are there, the business is producing more cash than this number shows."};
+  if(big.avgF<=0)return{t:"Fix cash first",b:"The business is not producing free cash right now, so both paying down debt and growing would be funded by borrowing. The first conversation is where the cash is going."};
+  if(marginLow)return{t:"Margin first, then choose",b:"Margins are below the floor for "+b.name+". Growing at these margins needs "+(big.per100!=null?fmt(big.per100,"usd")+" of cash per $100K of new sales":"cash up front")+(big.earnBack!=null?" and takes about "+big.earnBack.toFixed(1)+" years to earn it back":"")+". Debt only comes down as fast as free cash flow ("+fmt(big.avgF,"usd")+" a month). Raising margin speeds up both paths, so it comes before the split."};
+  if(big.payoff!=null&&big.payoff>48)return{t:"Lean toward paying down debt",b:"At "+fmt(big.avgF,"usd")+" a month, debt takes about "+trPayoffText(big.payoff)+" to clear. Putting most free cash flow toward debt for the next 12 months shortens that and cuts interest. Keep a smaller share for growth that earns its cash back quickly."};
+  return{t:"Room for a balanced split",b:"Free cash flow of "+fmt(big.avgF,"usd")+" a month covers the debt in about "+(big.payoff!=null?trPayoffText(big.payoff):"a short time")+". The business can keep paying debt down and fund growth at the same time. The decision is the split."};
+}
+var TR_LVL={act:{cls:"critical",lbl:"ACT NOW"},watch:{cls:"high",lbl:"WATCH"},good:{cls:"good",lbl:"STRENGTH"}};
+function trRecsHtml(verdict,recs){
+  var h='<div class="stitle" style="margin-top:6px">What the trend says</div>';
+  h+='<div class="tr-bigcard" style="margin-bottom:14px;border-left:4px solid var(--accent)"><div class="lbl" style="margin:0">Debt vs. growth read</div>'+
+    '<div style="font-size:16px;font-weight:800;margin:6px 0">'+escH(verdict.t)+'</div>'+
+    '<div class="tr-bignote" style="font-size:12px;color:var(--ink2)">'+escH(verdict.b)+'</div></div>';
+  recs.forEach(function(r){
+    var L=TR_LVL[r.level];
+    h+='<div class="rcard '+L.cls+'"><div class="rcard-head"><div class="rcard-title">'+escH(r.title)+'</div><span class="rpill '+L.cls+'">'+L.lbl+'</span></div>'+
+      '<div class="rcard-body">'+escH(r.why)+'</div>'+
+      '<div class="rcard-steps"><strong>What to do</strong>'+r.steps.map(function(s,i){return'<div>'+(i+1)+'. '+escH(s)+'</div>';}).join("")+'</div></div>';
+  });
+  h+='<div style="font-size:11px;color:var(--ink3);margin:6px 0 22px">Based on the monthly figures in this range, whichever view is selected. Recent values use the average of the last 3 months.</div>';
+  return h;
 }
 function trLensHtml(title,question,metrics,periods,prefix,ind){
   var b=B[ind];
@@ -2680,8 +2894,10 @@ function trDrawCharts(periods,metrics,prefix,ind){
     }));
   });
 }
+var TR_LAST=null;
 function renderTrends(){
   TR_CHARTS.forEach(function(c){try{c.destroy();}catch(e){}});TR_CHARTS=[];
+  TR_LAST=null;
   var body=document.getElementById("tr-body");
   var co=document.getElementById("tr-co").value;
   var f=parseInt(document.getElementById("tr-from").value),t=parseInt(document.getElementById("tr-to").value);
@@ -2689,20 +2905,189 @@ function renderTrends(){
   if(f>t){var x=f;f=t;t=x;}
   var months=trMonths(co).filter(function(h){var k=deriveMonthKey(h);return k>=f&&k<=t;});
   if(months.length<2){body.innerHTML='<div class="tip">Pick a range with at least two months to see a trend.</div>';return;}
-  var ind=months[months.length-1].industry||IND;
+  var ind=months[months.length-1].industry;
+  if(!B[ind])ind=IND;
   var periods=trPeriods(months);
   var expected=(Math.floor(t/100)*12+(t%100))-(Math.floor(f/100)*12+(f%100))+1;
+  var big=trBigNumbers(months);
+  var recs=trRecs(months,ind,big);
+  var verdict=trVerdict(months,ind,big);
+  var lenses=[
+    {title:"Debt capacity",q:"Can the business carry its debt and pay it down?",metrics:TR_DEBT,prefix:"trd"},
+    {title:"Growth capacity",q:"Is growth healthy, or is it just buying revenue?",metrics:TR_GROW,prefix:"trg"}
+  ];
+  var gap=months.length<expected?months.length+" of "+expected+" months in this range are imported. Missing months leave gaps in the charts and make quarter totals incomplete.":"";
   var html="";
   if(typeof Chart==="undefined")html+='<div class="errmsg" style="margin-bottom:14px">Charts could not load (check the internet connection). The tables below still show every number.</div>';
-  if(months.length<expected)html+='<div class="errmsg" style="margin:0 0 14px">'+months.length+' of '+expected+' months in this range are imported. Missing months leave gaps in the charts and make quarter totals incomplete.</div>';
-  html+=trBigHtml(months);
+  if(gap)html+='<div class="errmsg" style="margin:0 0 14px">'+gap+'</div>';
+  html+=trBigHtml(big,months.length);
   if(TR_VIEW==="quarter"&&periods.length<2)html+='<div class="tip">Only one quarter in this range. Widen the range or switch to month over month to see movement.</div>';
-  html+=trLensHtml("Debt capacity","Can the business carry its debt and pay it down?",TR_DEBT,periods,"trd",ind);
-  html+=trLensHtml("Growth capacity","Is growth healthy, or is it just buying revenue?",TR_GROW,periods,"trg",ind);
-  html+='<div style="font-size:11px;color:var(--ink3);line-height:1.6">Trend compares the average of the first 3 periods to the last 3 (first vs. last when there are fewer than 6). Arrows in the tables show the change from the previous period, green when it moved the right way. Targets are '+escH(B[ind].name)+' benchmarks.</div>';
+  lenses.forEach(function(L){html+=trLensHtml(L.title,L.q,L.metrics,periods,L.prefix,ind);});
+  html+=trRecsHtml(verdict,recs);
+  html+='<div style="font-size:11px;color:var(--ink3);line-height:1.6">Trend compares the average of the first 3 periods to the last 3 (first vs. last when there are fewer than 6). Arrows in the tables show the change from the previous period, green when it moved the right way. Targets are '+escH(B[ind].name)+' benchmarks. To change them, pick a different industry in the top bar.</div>';
   body.innerHTML=html;
-  trDrawCharts(periods,TR_DEBT,"trd",ind);
-  trDrawCharts(periods,TR_GROW,"trg",ind);
+  lenses.forEach(function(L){trDrawCharts(periods,L.metrics,L.prefix,ind);});
+  TR_LAST={co:co,months:months,periods:periods,ind:ind,big:big,recs:recs,verdict:verdict,lenses:lenses,view:TR_VIEW,gap:gap,
+    rangeLabel:months[0].period+" to "+months[months.length-1].period};
+}
+
+// ── PDF: TRENDS ───────────────────────────────────────────────────────────────
+function pdfFooterAll(ctx,text){
+  var doc=ctx.doc,n=doc.getNumberOfPages();
+  for(var p=1;p<=n;p++){
+    doc.setPage(p);
+    doc.setFillColor(240,242,245);doc.rect(0,ctx.H-12,ctx.W,12,"F");
+    doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120,125,133);
+    doc.text(text,ctx.ml,ctx.H-5);
+    doc.text("Page "+p+" of "+n,ctx.W-ctx.mr,ctx.H-5,{align:"right"});
+  }
+}
+function pdfTrendTable(ctx,metrics,periods,ind){
+  var doc=ctx.doc,ml=ctx.ml,usable=ctx.usable,b=B[ind];
+  var nameW=46,tgtW=20,trW=22,pw=(usable-nameW-tgtW-trW)/periods.length;
+  var fs=periods.length>9?6.2:7.2,rowH=6.6;
+  pdfCheckPage(ctx,8+rowH*metrics.length);
+  var y=ctx.y();
+  doc.setFillColor(30,36,50);doc.rect(ml,y,usable,7,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(fs);doc.setTextColor(230,232,236);
+  doc.text("Metric",ml+2,y+4.8);
+  periods.forEach(function(p,i){doc.text(String(p.label),ml+nameW+pw*(i+1)-1.5,y+4.8,{align:"right"});});
+  doc.text("Target",ml+nameW+pw*periods.length+tgtW-1.5,y+4.8,{align:"right"});
+  doc.text("Trend",ml+usable-trW+2,y+4.8);
+  y+=7;
+  metrics.forEach(function(m,ri){
+    var vals=periods.map(function(p){return trVal(p.kpis,m);});
+    doc.setFillColor(ri%2===0?255:248,ri%2===0?255:249,ri%2===0?255:250);doc.rect(ml,y,usable,rowH,"F");
+    doc.setFont("helvetica","normal");doc.setFontSize(fs);doc.setTextColor(40,45,55);
+    doc.text(m.n,ml+2,y+4.4);
+    vals.forEach(function(v,i){
+      var col=[40,45,55],txt=fmt(v,m.t);
+      if(m.k==="debtEquity"&&trNegEquity(periods[i].kpis)){txt="Neg. equity";col=[192,57,43];}
+      else if(i>0&&v!=null&&vals[i-1]!=null&&Math.abs(v-vals[i-1])>0.0001){
+        var good=(m.better==="up")===(v>vals[i-1]);col=good?[10,124,74]:[192,57,43];
+      }
+      doc.setTextColor(col[0],col[1],col[2]);
+      doc.text(txt,ml+nameW+pw*(i+1)-1.5,y+4.4,{align:"right"});
+    });
+    var bk=m.bk?b[m.bk]:null;
+    doc.setTextColor(120,125,133);
+    doc.text(bk&&bk.g!=null?fmt(bk.g,m.t):"--",ml+nameW+pw*periods.length+tgtW-1.5,y+4.4,{align:"right"});
+    var dir=trDirection(vals,m.better);
+    var dc=dir==="improved"?[10,124,74]:dir==="declined"?[192,57,43]:[120,125,133];
+    doc.setFont("helvetica","bold");doc.setTextColor(dc[0],dc[1],dc[2]);
+    doc.text(dir==="improved"?"Improving":dir==="declined"?"Worsening":dir==="flat"?"Flat":"N/A",ml+usable-trW+2,y+4.4);
+    y+=rowH;
+  });
+  ctx.setY(y+6);
+}
+function exportTrendsPDF(){
+  if(!TR_LAST){alert("Pick a company and a range with at least two months first.");return;}
+  var T=TR_LAST;
+  ensureJsPDF(function(JsPDF){
+    var viewTxt=T.view==="month"?"Month over month":"Quarter over quarter";
+    var ctx=pdfInit(JsPDF,"Trends Report",T.co+"  |  "+T.rangeLabel+"  |  "+viewTxt+"  |  Targets: "+B[T.ind].name,"landscape");
+    var doc=ctx.doc,ml=ctx.ml,usable=ctx.usable;
+    if(T.gap){
+      doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(192,57,43);
+      doc.text(T.gap,ml,ctx.y()+2);ctx.addY(7);
+    }
+    // Conversation starters
+    pdfSectionTitle(ctx,"The conversation starters");
+    var cards=trBigCards(T.big,T.months.length);
+    var gapX=4,bw=(usable-gapX*2)/3;
+    doc.setFont("helvetica","normal");doc.setFontSize(7.3);
+    var noteLines=cards.map(function(c){return doc.splitTextToSize(c.note,bw-8);});
+    var maxLines=Math.max.apply(null,noteLines.map(function(l){return l.length;}));
+    var bh=20+maxLines*3.4+3;
+    pdfCheckPage(ctx,bh+4);
+    var y0=ctx.y();
+    var colMap={"var(--success)":[10,124,74],"var(--danger)":[192,57,43],"var(--warn)":[180,83,9],"var(--ink3)":[120,125,133],"var(--ink)":[15,17,23]};
+    cards.forEach(function(c,i){
+      var x=ml+i*(bw+gapX);
+      doc.setFillColor(246,246,244);doc.setDrawColor(221,220,218);doc.setLineWidth(0.3);
+      doc.roundedRect(x,y0,bw,bh,2,2,"FD");
+      doc.setFont("helvetica","bold");doc.setFontSize(7);doc.setTextColor(122,125,133);
+      doc.text(c.title.toUpperCase(),x+4,y0+6);
+      var vc=colMap[c.col]||[15,17,23];
+      doc.setFontSize(15);doc.setTextColor(vc[0],vc[1],vc[2]);
+      doc.text(c.val,x+4,y0+14);
+      if(c.suffix){var vw=doc.getTextWidth(c.val);doc.setFontSize(8);doc.setTextColor(122,125,133);doc.text(c.suffix.trim(),x+4+vw+1.5,y0+14);}
+      doc.setFont("helvetica","normal");doc.setFontSize(7.3);doc.setTextColor(80,84,92);
+      noteLines[i].forEach(function(l,li){doc.text(String(l),x+4,y0+20+li*3.4);});
+    });
+    ctx.setY(y0+bh+6);
+    doc.setFont("helvetica","normal");doc.setFontSize(8.5);
+    var vLines=doc.splitTextToSize(T.verdict.b,usable-12);
+    var vh=14+vLines.length*4.2+3;
+    pdfCheckPage(ctx,vh);
+    var vy=ctx.y();
+    doc.setFillColor(232,240,254);doc.rect(ml,vy,usable,vh,"F");
+    doc.setFillColor(26,92,255);doc.rect(ml,vy,3,vh,"F");
+    doc.setFont("helvetica","bold");doc.setFontSize(7);doc.setTextColor(122,125,133);
+    doc.text("DEBT VS. GROWTH READ",ml+7,vy+5.5);
+    doc.setFontSize(12);doc.setTextColor(15,17,23);
+    doc.text(T.verdict.t,ml+7,vy+11.5);
+    doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(61,64,71);
+    vLines.forEach(function(l,i){doc.text(String(l),ml+7,vy+17+i*4.2);});
+    ctx.setY(vy+vh+5);
+    // Lenses: charts then table
+    T.lenses.forEach(function(L){
+      doc.addPage();ctx.setY(16);
+      pdfSectionTitle(ctx,L.title+": "+L.q);
+      var cw=(usable-gapX*2)/3;
+      L.metrics.forEach(function(m,i){
+        var el=document.getElementById(L.prefix+i);
+        var ratio=el&&el.width?el.height/el.width:0.55;
+        var ch=Math.min(cw*ratio,48);
+        var col=i%3;
+        if(col===0){pdfCheckPage(ctx,ch+10);}
+        var x=ml+col*(cw+gapX),y=ctx.y();
+        doc.setFont("helvetica","bold");doc.setFontSize(8);doc.setTextColor(15,17,23);
+        doc.text(m.n,x,y+3);
+        doc.setFont("helvetica","normal");doc.setFontSize(6.5);doc.setTextColor(122,125,133);
+        doc.text(m.kind==="flow"?"Total for each period":"Balance at the end of each period",x,y+6.5);
+        if(el&&typeof Chart!=="undefined"){
+          try{doc.addImage(el.toDataURL("image/png"),"PNG",x,y+8,cw,ch);}catch(e){}
+        }
+        if(col===2||i===L.metrics.length-1)ctx.setY(y+ch+12);
+      });
+      pdfTrendTable(ctx,L.metrics,T.periods,T.ind);
+    });
+    // Recommendations
+    doc.addPage();ctx.setY(16);
+    pdfSectionTitle(ctx,"What the trend says");
+    var lvlCol={act:[192,57,43],watch:[180,83,9],good:[10,124,74]};
+    var lvlBg={act:[253,236,234],watch:[254,243,226],good:[230,244,237]};
+    T.recs.forEach(function(r){
+      var c=lvlCol[r.level],bg=lvlBg[r.level],lbl=TR_LVL[r.level].lbl;
+      doc.setFont("helvetica","bold");doc.setFontSize(9);
+      var tLines=doc.splitTextToSize(r.title,usable-40);
+      doc.setFont("helvetica","normal");doc.setFontSize(8);
+      var wLines=doc.splitTextToSize(r.why,usable-10);
+      var sLines=r.steps.map(function(s,i){return doc.splitTextToSize((i+1)+". "+s,usable-14);});
+      var sCount=sLines.reduce(function(a,l){return a+l.length;},0);
+      var h=tLines.length*4.6+wLines.length*3.9+sCount*3.9+9;
+      pdfCheckPage(ctx,h+3);
+      var y=ctx.y();
+      doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(ml,y,usable,h,"F");
+      doc.setFillColor(c[0],c[1],c[2]);doc.rect(ml,y,3,h,"F");
+      doc.roundedRect(ml+6,y+2.5,22,5,1,1,"F");
+      doc.setFont("helvetica","bold");doc.setFontSize(6.5);doc.setTextColor(255,255,255);
+      doc.text(lbl,ml+17,y+6,{align:"center"});
+      doc.setFontSize(9);doc.setTextColor(15,17,23);
+      var yy=y+6.2;
+      tLines.forEach(function(l){doc.text(String(l),ml+32,yy);yy+=4.6;});
+      yy+=1;
+      doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(61,64,71);
+      wLines.forEach(function(l){doc.text(String(l),ml+6,yy);yy+=3.9;});
+      yy+=2;
+      doc.setTextColor(30,35,45);
+      sLines.forEach(function(ls){ls.forEach(function(l){doc.text(String(l),ml+9,yy);yy+=3.9;});});
+      ctx.setY(y+h+3);
+    });
+    pdfFooterAll(ctx,"Modonix LLC  |  Confidential  |  "+T.co+" Trends Report  |  "+T.rangeLabel);
+    pdfSave(doc,"Modonix_FinIQ_Trends_"+T.co.replace(/[^A-Za-z0-9]+/g,"_")+"_"+T.rangeLabel.replace(/[^A-Za-z0-9]+/g,"_")+".pdf");
+  });
 }
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
@@ -2717,7 +3102,25 @@ function sw(n){
   if(n==="trends")trPopulate();
   if(n==="guide")renderGuide();
 }
-function onInd(){IND=document.getElementById("industry").value;if(LAST){renderKPIs(LAST);renderBM(LAST);document.getElementById("kpisub").textContent=LPER+" | "+B[IND].name;}}
+// Industry is a property of the company: changing it updates every saved month for
+// the company on screen (the Trends company when on that tab), so the benchmarks stick.
+function onInd(){
+  IND=document.getElementById("industry").value;
+  try{localStorage.setItem("finiq_ind",IND);}catch(e){}
+  var onTr=document.getElementById("p-trends").classList.contains("on");
+  var co=onTr?document.getElementById("tr-co").value:LCO;
+  if(co){
+    var n=0;
+    HIST.forEach(function(h){if(h.type!=="comparison"&&h.company===co){h.industry=IND;n++;}});
+    if(n){try{localStorage.setItem("finiq_h",JSON.stringify(HIST));}catch(e){}}
+  }
+  if(LAST){
+    renderKPIs(LAST);renderBM(LAST);
+    LINS=genInsights(LAST);renderAnalysis(LINS);renderRecs(LAST,LPER,LCO);
+    document.getElementById("kpisub").textContent=LPER+" | "+B[IND].name;
+  }
+  if(onTr)renderTrends();
+}
 
 // ── KPI GUIDE ─────────────────────────────────────────────────────────────────
 var GUIDE=[
@@ -2772,6 +3175,7 @@ function renderGuide(){
 }
 
 // Init
+document.getElementById("industry").value=IND;
 // Back-fill monthKey on records saved before v3 so ranges work on old data
 HIST.forEach(function(h){if(h.monthKey===undefined)h.monthKey=deriveMonthKey(h);});
 renderHist();
