@@ -2553,18 +2553,60 @@ function trPeriods(months){
     return{label:"Q"+parts[1]+" "+parts[0]+(g.length<3?" ("+g.length+" mo)":""),kpis:deriveFromRaw(d,emp,g.length),n:g.length};
   });
 }
-// Overall direction across the range. With 6+ periods, compares the average of
-// the first 3 to the average of the last 3, so one odd month doesn't decide it.
-function trDirection(vals,better){
-  var v=vals.filter(function(x){return x!=null;});
-  if(v.length<2)return"na";
-  function avg(arr){return arr.reduce(function(s,x){return s+x;},0)/arr.length;}
-  var a,b;
-  if(v.length>=6){a=avg(v.slice(0,3));b=avg(v.slice(-3));}else{a=v[0];b=v[v.length-1];}
-  var diff=b-a;
-  if(Math.abs(diff)<=Math.max(Math.abs(a)*0.02,0.0001))return"flat";
-  var up=diff>0;
-  return(better==="up")===up?"improved":"declined";
+// Trend = a straight line of best fit (linear regression) through every period,
+// the same trendline Excel draws. "Change" is how far that line rises or falls from
+// the first period to the last. Small moves count as flat:
+// margins within 1 point, days within 3, ratios within 0.05, turns within 0.3,
+// dollars within 5% of the average. A second check fits the last 3 months on their
+// own, to show which way things are heading right now (catches dips and recoveries).
+var TR_FLAT={pct:1,days:3,ratio:0.05,turns:0.3};
+function trFit(pts){
+  var n=pts.length;if(n<2)return null;
+  var sx=0,sy=0,sxx=0,sxy=0;
+  pts.forEach(function(p){sx+=p.x;sy+=p.y;sxx+=p.x*p.x;sxy+=p.x*p.y;});
+  var d=n*sxx-sx*sx;if(!d)return null;
+  var slope=(n*sxy-sx*sy)/d;
+  return{slope:slope,icpt:(sy-slope*sx)/n};
+}
+function trFlatBand(vals,t){
+  if(t==="usd"){var v=vals.filter(trNN);if(!v.length)return 1;return Math.max(trSum(v.map(Math.abs))/v.length*0.05,1);}
+  return TR_FLAT[t]||0.0001;
+}
+function trJudge(change,band,better){
+  if(Math.abs(change)<=band)return"flat";
+  return(better==="up")===(change>0)?"improved":"declined";
+}
+function trTrend(vals,m){
+  var res={overall:"na",recent:"na",recentUp:null,change:null,fit:null};
+  var pts=[];vals.forEach(function(v,i){if(trNN(v))pts.push({x:i,y:v});});
+  if(pts.length<2)return res;
+  var band=trFlatBand(vals,m.t),fit=trFit(pts);
+  if(!fit)return res;
+  res.fit=fit;
+  res.change=fit.slope*(pts[pts.length-1].x-pts[0].x);
+  res.overall=trJudge(res.change,band,m.better);
+  if(pts.length>=4){
+    var r=pts.slice(-3),rf=trFit(r);
+    if(rf){var rc=rf.slope*(r[2].x-r[0].x);res.recent=trJudge(rc,band*0.5,m.better);res.recentUp=rc>0;}
+  }
+  return res;
+}
+function trTrendHtml(tr){
+  var badge=tr.overall==="improved"?'<span class="prog-badge improved">Improving</span>'
+    :tr.overall==="declined"?'<span class="prog-badge declined">Worsening</span>'
+    :tr.overall==="flat"?'<span class="prog-badge flat">Flat</span>'
+    :'<span style="color:var(--ink3)">N/A</span>';
+  if(tr.recent!=="na"){
+    var cls=tr.recent==="improved"?"tup":tr.recent==="declined"?"tdown":"tflat";
+    var word=tr.recent==="flat"?"steady":tr.recentUp?"up":"down";
+    badge+='<div class="'+cls+'" style="font-size:10px;margin-top:3px;white-space:nowrap">Last 3 mo: '+word+'</div>';
+  }
+  return badge;
+}
+function trTrendText(tr){
+  var t=tr.overall==="improved"?"Improving":tr.overall==="declined"?"Worsening":tr.overall==="flat"?"Flat":"N/A";
+  if(tr.recent!=="na")t+=", "+(tr.recent==="flat"?"steady":tr.recentUp?"up":"down")+" last 3 mo";
+  return t;
 }
 function trAxis(v,t){
   if(t==="usd"){var a=Math.abs(v),s=v<0?"-$":"$";if(a>=1e6)return s+(a/1e6).toFixed(1)+"M";if(a>=1e3)return s+Math.round(a/1e3)+"K";return s+Math.round(a);}
@@ -2662,11 +2704,11 @@ function trLatest(vals){for(var i=vals.length-1;i>=0;i--)if(trNN(vals[i]))return
 function trMetric(k){var all=TR_DEBT.concat(TR_GROW);for(var i=0;i<all.length;i++)if(all[i].k===k)return all[i];return null;}
 function trSeries(months,k){var m=trMetric(k);return months.map(function(h){return trVal(h.kpis,m);});}
 function trRecs(months,ind,big){
-  var b=B[ind],out=[];
-  function add(level,title,why,steps){out.push({level:level,title:title,why:why,steps:steps});}
+  var b=B[ind],out=[],curK=null;
+  function add(level,title,why,steps){out.push({level:level,title:title,why:why,steps:steps,k:curK});}
   var annRev=big.annRev||0;
-  var fcfDir=trDirection(trSeries(months,"freeCashFlow"),"up");
-  var revDir=trDirection(trSeries(months,"revenue"),"up");
+  var fcfDir=trTrend(trSeries(months,"freeCashFlow"),trMetric("freeCashFlow")).overall;
+  var revDir=trTrend(trSeries(months,"revenue"),trMetric("revenue")).overall;
 
   // Cash generation
   if(big.avgF!=null){
@@ -2701,37 +2743,40 @@ function trRecs(months,ind,big){
   }
 
   // Gross margin
+  curK="grossMargin";
   var gmR=trRecent(trSeries(months,"grossMargin")),gb=b.grossMargin;
   if(gmR!=null&&gb&&gb.g!=null){
     var pt=annRev*0.01;
-    if(gmR<gb.o)add("act","Gross margin of "+gmR.toFixed(1)+"% is below the "+gb.o+"% floor",
+    if(gmR<gb.o)add("act","Gross margin averaged "+gmR.toFixed(1)+"% over the last 3 months, below the "+gb.o+"% floor",
       "The target for "+b.name+" is "+gb.g+"%. At the current sales run rate, each point of gross margin is worth about "+fmt(pt,"usd")+" a year.",
       ["Rank products by gross margin and reprice or drop the bottom group.","Renegotiate cost with the top suppliers by spend.","Check whether shipping and fulfillment costs inside cost of goods can be passed on or reduced."]);
-    else if(gmR<gb.g)add("watch","Gross margin of "+gmR.toFixed(1)+"% is under the "+gb.g+"% target",
+    else if(gmR<gb.g)add("watch","Gross margin averaged "+gmR.toFixed(1)+"% over the last 3 months, under the "+gb.g+"% target",
       "Closing the gap is worth about "+fmt(pt*(gb.g-gmR),"usd")+" a year at the current sales run rate.",
       ["Steer sales toward the higher-margin product lines.","Review pricing on the top sellers every quarter."]);
-    else add("good","Gross margin of "+gmR.toFixed(1)+"% meets the "+gb.g+"% target",
+    else add("good","Gross margin averaged "+gmR.toFixed(1)+"% over the last 3 months, meeting the "+gb.g+"% target",
       "Pricing and product cost are in line with the industry.",
       ["Review pricing before taking on lower-margin volume."]);
   }
 
   // Net margin
+  curK="netMargin";
   var nmR=trRecent(trSeries(months,"netMargin")),nb=b.netMargin;
   if(nmR!=null&&nb&&nb.g!=null){
     var gap=gmR!=null?" Overhead and interest take "+(gmR-nmR).toFixed(1)+" points of the "+gmR.toFixed(1)+"% gross margin.":"";
-    if(nmR<nb.o)add("act","Net margin of "+nmR.toFixed(1)+"% leaves very little room",
+    if(nmR<nb.o)add("act","Net margin averaged "+nmR.toFixed(1)+"% over the last 3 months, very little room",
       "The floor for "+b.name+" is "+nb.o+"%."+gap,
       ["List operating expenses largest to smallest and challenge the top three.","Count interest in the debt decision: paying down expensive debt raises net margin directly."]);
-    else if(nmR<nb.g)add("watch","Net margin of "+nmR.toFixed(1)+"% is under the "+nb.g+"% target",
+    else if(nmR<nb.g)add("watch","Net margin averaged "+nmR.toFixed(1)+"% over the last 3 months, under the "+nb.g+"% target",
       "Each point of net margin is worth about "+fmt(annRev*0.01,"usd")+" a year."+gap,
       ["Hold overhead flat while sales grow so more of each dollar reaches the bottom line."]);
-    else add("good","Net margin of "+nmR.toFixed(1)+"% meets the "+nb.g+"% target",
+    else add("good","Net margin averaged "+nmR.toFixed(1)+"% over the last 3 months, meeting the "+nb.g+"% target",
       "The business keeps an industry-normal share of each sale.",
       ["Keep overhead growing slower than sales."]);
   }
 
   // Collections
-  var dsoS=trSeries(months,"dso"),dsoR=trRecent(dsoS),db=b.dso,dsoDir=trDirection(dsoS,"down");
+  curK="dso";
+  var dsoS=trSeries(months,"dso"),dsoR=trRecent(dsoS),db=b.dso,dsoDir=trTrend(dsoS,trMetric("dso")).overall;
   if(dsoR!=null&&db&&db.g!=null){
     var rel=annRev/365*(dsoR-db.g);
     if(dsoR>db.o)add("act","Customers are taking "+Math.round(dsoR)+" days to pay",
@@ -2749,6 +2794,7 @@ function trRecs(months,ind,big){
   }
 
   // Inventory
+  curK="inventoryTurnover";
   var itR=trRecent(trSeries(months,"inventoryTurnover")),ib=b.inventoryTurnover;
   if(itR!=null&&ib&&ib.g!=null){
     var inv=big.last.inventory,free=inv!=null&&big.annCogs?inv-big.annCogs/ib.g:null;
@@ -2764,6 +2810,7 @@ function trRecs(months,ind,big){
       ["Watch for stockouts on the top sellers."]);
   }
 
+  curK=null;
   // Liquidity (snapshot, so use the latest month)
   var crL=trLatest(trSeries(months,"currentRatio")),cb=b.currentRatio;
   if(crL!=null&&cb&&cb.g!=null){
@@ -2793,6 +2840,16 @@ function trRecs(months,ind,big){
       ["Identify which new borrowing or unpaid bills drove the increase."]);
   }
 
+  // Add what the trend line is doing to the margin, collections and inventory cards
+  out.forEach(function(r){
+    if(!r.k)return;
+    var tr=trTrend(trSeries(months,r.k),trMetric(r.k));
+    if(tr.overall==="na")return;
+    var o=tr.overall==="improved"?"improving":tr.overall==="declined"?"worsening":"flat";
+    var note=" Trend line over this range: "+o;
+    if(tr.recent!=="na")note+=", and the last 3 months are "+(tr.recent==="flat"?"steady":tr.recentUp?"rising":"falling");
+    r.why+=note+".";
+  });
   var rank={act:0,watch:1,good:2};
   return out.map(function(r,i){r._i=i;return r;}).sort(function(a,c){return rank[a.level]-rank[c.level]||a._i-c._i;});
 }
@@ -2850,12 +2907,7 @@ function trLensHtml(title,question,metrics,periods,prefix,ind){
     });
     var bk=m.bk?b[m.bk]:null;
     h+='<td class="r" style="color:var(--ink3);white-space:nowrap">'+(bk&&bk.g!=null?fmt(bk.g,m.t):"--")+'</td>';
-    var dir=trDirection(vals,m.better);
-    var badge=dir==="improved"?'<span class="prog-badge improved">Improving</span>'
-      :dir==="declined"?'<span class="prog-badge declined">Worsening</span>'
-      :dir==="flat"?'<span class="prog-badge flat">Flat</span>'
-      :'<span style="color:var(--ink3)">N/A</span>';
-    h+='<td>'+badge+'</td></tr>';
+    h+='<td>'+trTrendHtml(trTrend(vals,m))+'</td></tr>';
   });
   h+='</tbody></table></div>';
   return h;
@@ -2873,6 +2925,10 @@ function trDrawCharts(periods,metrics,prefix,ind){
       ds.push({label:m.n,data:data,backgroundColor:data.map(function(v){return v!=null&&v<0?"#c0392b":"#1a5cff";}),borderRadius:4,maxBarThickness:42});
     }else{
       ds.push({label:m.n,data:data,borderColor:"#1a5cff",backgroundColor:"rgba(26,92,255,.08)",fill:true,tension:.3,pointRadius:3,pointBackgroundColor:"#1a5cff",spanGaps:true});
+    }
+    var trl=trTrend(data,m);
+    if(trl.fit){
+      ds.push({type:"line",label:"Trend",data:periods.map(function(p,j){return trl.fit.icpt+trl.fit.slope*j;}),borderColor:"#7a7d85",borderDash:[2,3],borderWidth:1.5,pointRadius:0,fill:false});
     }
     if(bk&&bk.g!=null){
       ds.push({type:"line",label:"Target",data:periods.map(function(){return bk.g;}),borderColor:"#0a7c4a",borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false});
@@ -2924,7 +2980,7 @@ function renderTrends(){
   if(TR_VIEW==="quarter"&&periods.length<2)html+='<div class="tip">Only one quarter in this range. Widen the range or switch to month over month to see movement.</div>';
   lenses.forEach(function(L){html+=trLensHtml(L.title,L.q,L.metrics,periods,L.prefix,ind);});
   html+=trRecsHtml(verdict,recs);
-  html+='<div style="font-size:11px;color:var(--ink3);line-height:1.6">Trend compares the average of the first 3 periods to the last 3 (first vs. last when there are fewer than 6). Arrows in the tables show the change from the previous period, green when it moved the right way. Targets are '+escH(B[ind].name)+' benchmarks. To change them, pick a different industry in the top bar.</div>';
+  html+='<div style="font-size:11px;color:var(--ink3);line-height:1.6">Trend is a straight line of best fit through every period (the grey dotted line on each chart), the same trendline Excel draws. Flat means the line moves less than 1 point for margins, 3 days, 0.05x for ratios, 0.3 turns, or 5% for dollar amounts. "Last 3 mo" fits the most recent 3 months on their own to show where things are heading now. Arrows in the tables show the change from the previous period, green when it moved the right way. Targets are '+escH(B[ind].name)+' benchmarks. To change them, pick a different industry in the top bar.</div>';
   body.innerHTML=html;
   lenses.forEach(function(L){trDrawCharts(periods,L.metrics,L.prefix,ind);});
   TR_LAST={co:co,months:months,periods:periods,ind:ind,big:big,recs:recs,verdict:verdict,lenses:lenses,view:TR_VIEW,gap:gap,
@@ -2944,7 +3000,7 @@ function pdfFooterAll(ctx,text){
 }
 function pdfTrendTable(ctx,metrics,periods,ind){
   var doc=ctx.doc,ml=ctx.ml,usable=ctx.usable,b=B[ind];
-  var nameW=46,tgtW=20,trW=22,pw=(usable-nameW-tgtW-trW)/periods.length;
+  var nameW=46,tgtW=20,trW=40,pw=(usable-nameW-tgtW-trW)/periods.length;
   var fs=periods.length>9?6.2:7.2,rowH=6.6;
   pdfCheckPage(ctx,8+rowH*metrics.length);
   var y=ctx.y();
@@ -2972,10 +3028,10 @@ function pdfTrendTable(ctx,metrics,periods,ind){
     var bk=m.bk?b[m.bk]:null;
     doc.setTextColor(120,125,133);
     doc.text(bk&&bk.g!=null?fmt(bk.g,m.t):"--",ml+nameW+pw*periods.length+tgtW-1.5,y+4.4,{align:"right"});
-    var dir=trDirection(vals,m.better);
+    var tr=trTrend(vals,m),dir=tr.overall;
     var dc=dir==="improved"?[10,124,74]:dir==="declined"?[192,57,43]:[120,125,133];
     doc.setFont("helvetica","bold");doc.setTextColor(dc[0],dc[1],dc[2]);
-    doc.text(dir==="improved"?"Improving":dir==="declined"?"Worsening":dir==="flat"?"Flat":"N/A",ml+usable-trW+2,y+4.4);
+    doc.text(trTrendText(tr),ml+usable-trW+2,y+4.4);
     y+=rowH;
   });
   ctx.setY(y+6);
